@@ -163,14 +163,7 @@ button:active,
 
 .beat {
   position: relative;
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 320ms cubic-bezier(0.16, 1, 0.3, 1), transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.beat.in-view {
   opacity: 1;
-  transform: translateY(0);
 }
 
 .beat-first {

@@ -682,10 +682,12 @@ export default function HomePage() {
           {/* ─── 7. Bottom Section – Unit Links ─────────────────────── */}
           <section
             ref={unitsRef}
-            className="beat section-divider"
+            className="section-divider"
             style={{
               paddingTop: '2.5rem',
               borderTop: '1px solid #E2E8F0',
+              opacity: 1,
+              display: 'block',
             }}
           >
             <div style={{ marginBottom: '1.25rem' }}>
