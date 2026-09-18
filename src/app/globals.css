@@ -148,7 +148,86 @@ button:active,
   }
 }
 
-/* Beats (scroll narrative sections) */
+/* ─── Full-Page (100vh) Section System ──────────────────────── */
+
+@keyframes slideContentIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fullpage-wrapper {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: var(--paper);
+  user-select: none;
+}
+
+.fullpage-track {
+  height: 100%;
+  width: 100%;
+  transition: transform 0.75s cubic-bezier(0.76, 0, 0.24, 1);
+  will-change: transform;
+}
+
+.fullpage-slide {
+  height: 100dvh;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 4.75rem 1.25rem 2.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  position: relative;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: slideContentIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+
+@media (min-width: 640px) {
+  .fullpage-slide {
+    padding: 5.5rem 2rem 2.5rem;
+  }
+}
+
+/* Pagination indicator on right side (Desktop & Mobile) */
+.fullpage-hud {
+  position: fixed;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 50;
+}
+
+.fullpage-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background-color: var(--line);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+.fullpage-dot.active {
+  height: 22px;
+  background-color: var(--blue);
+}
+
+.fullpage-dot.active-teal {
+  height: 22px;
+  background-color: var(--teal);
+}
+
+/* Beats (scroll narrative sections fallback) */
 .beats-stack {
   display: flex;
   flex-direction: column;
@@ -251,14 +330,36 @@ button:active,
 }
 
 @keyframes eqBounceAnim {
-  0%, 100% { height: 6px; }
-  50%      { height: 38px; }
+  0%, 100% { height: 4px; }
+  50%      { height: var(--eq-h, 32px); }
 }
 
 @keyframes pdfScrollLoop {
   0%   { transform: translateY(0); }
   75%  { transform: translateY(-90px); }
   100% { transform: translateY(-90px); }
+}
+
+
+.eq-bar {
+  width: 0.3125rem;
+  border-radius: 2px;
+  background-color: #1E40AF;
+  transition: opacity 200ms ease;
+}
+
+.eq-bar.playing {
+  animation: eqBounceAnim var(--eq-dur, 0.7s) ease-in-out infinite;
+  opacity: 0.95;
+}
+
+.eq-bar.paused {
+  height: 4px;
+  opacity: 0.25;
+}
+
+.slide-enter {
+  animation: slideContentIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .anim-fade-in {
@@ -295,6 +396,15 @@ button:active,
     animation: none !important;
     transform: none !important;
     opacity: 1 !important;
+  }
+  .fullpage-slide {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .eq-bar.playing {
+    animation: none !important;
+    height: 20px !important;
   }
 }
 

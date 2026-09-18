@@ -1,455 +1,552 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { UNITS } from '@/lib/data';
 
+const TOTAL_PAGES = 6;
+
 export default function HomePage() {
-  // Loading screen (1.8s)
+  // Active Theory inspired loading screen
   const [isLoading, setIsLoading] = useState(true);
+  const [loadPercent, setLoadPercent] = useState(0);
 
-  // Active animation step (0 = loading, 1 = welcome, 2 = notes, 3 = video, 4 = audio, 5 = slides, 6 = units)
-  const [activeStep, setActiveStep] = useState(1);
+  // Active fullpage index (0: Welcome, 1: Notes, 2: Video, 3: Audio, 4: Slides, 5: Units)
+  const [currentPage, setCurrentPage] = useState(0);
+  const isTransitioningRef = useRef(false);
 
-  // Media playback states
-  const [notesPlaying, setNotesPlaying] = useState(false);
-  const [notesProgress, setNotesProgress] = useState(0);
+  // Touch gesture coordinates
+  const touchStartYRef = useRef(0);
 
+  // Page 4: Typewriter text state
+  const audioExactText = "Usiache kuosha viombo prevent you from gaining knowledge kua sharp boy/girl ukiskia audio overview ";
+  const [typedAudioText, setTypedAudioText] = useState("");
+  const [typingComplete, setTypingComplete] = useState(false);
+
+  // Slide content enter animation key (changes on page switch to re-trigger)
+  const [animKey, setAnimKey] = useState(0);
+
+  // Media state controls (for placeholders)
+  const [notesScrolled, setNotesScrolled] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
-  const [videoProgress, setVideoProgress] = useState(0);
-
-  // Typewriter for Message 4
-  const audioHookFullText = "Ukisoma text ukiskia audio overview — uko sharp.";
-  const [audioHookText, setAudioHookText] = useState("");
+  const [videoProgress, setVideoProgress] = useState(25);
   const [audioPlaying, setAudioPlaying] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0);
-
-  // Slides for Message 5
   const [slideIndex, setSlideIndex] = useState(0);
 
-  // Section references for gentle auto-scroll
-  const step1Ref = useRef<HTMLElement | null>(null);
-  const step2Ref = useRef<HTMLElement | null>(null);
-  const step3Ref = useRef<HTMLElement | null>(null);
-  const step4Ref = useRef<HTMLElement | null>(null);
-  const step5Ref = useRef<HTMLElement | null>(null);
-  const unitsRef = useRef<HTMLElement | null>(null);
-
-  // User manual scroll detection: don't hijack scroll if user manually scrolled recently
-  const userScrolledRef = useRef(false);
-  const lastUserScrollTimeRef = useRef(0);
-
-  const gentleScrollTo = (ref: React.RefObject<HTMLElement | null>) => {
-    // If user touched or scrolled manually within the last 3.5s, skip auto-scroll
-    if (Date.now() - lastUserScrollTimeRef.current < 3500) return;
-    if (ref.current) {
-      const top = ref.current.getBoundingClientRect().top + window.scrollY - 32;
-      window.scrollTo({ top, behavior: 'smooth' });
-    }
-  };
-
+  /* ─────────────────────────────────────────────────────────────
+     Active Theory Minimalist Loader
+  ───────────────────────────────────────────────────────────── */
   useEffect(() => {
-    const handleTouchOrWheel = () => {
-      lastUserScrollTimeRef.current = Date.now();
-      userScrolledRef.current = true;
-    };
-    window.addEventListener('wheel', handleTouchOrWheel, { passive: true });
-    window.addEventListener('touchstart', handleTouchOrWheel, { passive: true });
-    return () => {
-      window.removeEventListener('wheel', handleTouchOrWheel);
-      window.removeEventListener('touchstart', handleTouchOrWheel);
-    };
+    const startTime = Date.now();
+    const duration = 1800; // 1.8s
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min(Math.floor((elapsed / duration) * 100), 100);
+      setLoadPercent(pct);
+
+      if (pct >= 100) {
+        clearInterval(interval);
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 250);
+      }
+    }, 25);
+
+    return () => clearInterval(interval);
   }, []);
 
   /* ─────────────────────────────────────────────────────────────
-     Orchestration Timeline
+     Page Navigation Logic with Throttling
   ───────────────────────────────────────────────────────────── */
-  // 1. Initial Loading Screen
-  useEffect(() => {
-    const loadTimer = setTimeout(() => {
-      setIsLoading(false);
-      setActiveStep(1);
-    }, 1600);
-    return () => clearTimeout(loadTimer);
+  const goToPage = useCallback((index: number) => {
+    if (index < 0 || index >= TOTAL_PAGES) return;
+    if (isTransitioningRef.current) return;
+
+    isTransitioningRef.current = true;
+    setCurrentPage(index);
+    setAnimKey((k) => k + 1); // re-trigger slide-enter animation
+
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 800);
   }, []);
 
-  // 2. Step 1 (Welcome) -> Step 2 (Notes Hook)
+  const nextPage = useCallback(() => {
+    if (currentPage < TOTAL_PAGES - 1) {
+      goToPage(currentPage + 1);
+    }
+  }, [currentPage, goToPage]);
+
+  const prevPage = useCallback(() => {
+    if (currentPage > 0) {
+      goToPage(currentPage - 1);
+    }
+  }, [currentPage, goToPage]);
+
+  /* ─────────────────────────────────────────────────────────────
+     Desktop Wheel & Keyboard Handlers
+  ───────────────────────────────────────────────────────────── */
   useEffect(() => {
-    if (isLoading || activeStep !== 1) return;
-    const timer = setTimeout(() => {
-      setActiveStep(2);
-      gentleScrollTo(step2Ref);
-    }, 2200);
-    return () => clearTimeout(timer);
-  }, [isLoading, activeStep]);
+    if (isLoading) return;
 
-  // 3. Step 2 (Notes Hook) -> Play Notes PDF Scroll (7s) -> Step 3
-  useEffect(() => {
-    if (activeStep !== 2) return;
-    // Start notes scroll after fly-in text finishes (600ms)
-    const startDelay = setTimeout(() => {
-      setNotesPlaying(true);
-      const startTime = Date.now();
-      const duration = 6500;
-
-      const interval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        const p = Math.min(elapsed / duration, 1);
-        setNotesProgress(p);
-
-        if (p >= 1) {
-          clearInterval(interval);
-          setNotesPlaying(false);
-          // Advance to Step 3
-          setTimeout(() => {
-            setActiveStep(3);
-            gentleScrollTo(step3Ref);
-          }, 800);
-        }
-      }, 50);
-
-      return () => clearInterval(interval);
-    }, 600);
-
-    return () => clearTimeout(startDelay);
-  }, [activeStep]);
-
-  // 4. Step 3 (Video Review) -> Play Video Clip Preview (6s) -> Step 4
-  useEffect(() => {
-    if (activeStep !== 3) return;
-    const startDelay = setTimeout(() => {
-      setVideoPlaying(true);
-      const startTime = Date.now();
-      const duration = 6000;
-
-      const interval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        const p = Math.min(elapsed / duration, 1);
-        setVideoProgress(p * 100);
-
-        if (p >= 1) {
-          clearInterval(interval);
-          setVideoPlaying(false);
-          // Advance to Step 4
-          setTimeout(() => {
-            setActiveStep(4);
-            gentleScrollTo(step4Ref);
-          }, 800);
-        }
-      }, 50);
-
-      return () => clearInterval(interval);
-    }, 600);
-
-    return () => clearTimeout(startDelay);
-  }, [activeStep]);
-
-  // 5. Step 4 (Audio Overview) -> Typewriter Effect -> Play Waveform (6s) -> Step 5
-  useEffect(() => {
-    if (activeStep !== 4) return;
-    setAudioHookText("");
-    let charIndex = 0;
-
-    // Typewriter
-    const typeInterval = setInterval(() => {
-      charIndex++;
-      setAudioHookText(audioHookFullText.slice(0, charIndex));
-
-      if (charIndex >= audioHookFullText.length) {
-        clearInterval(typeInterval);
-
-        // Typing finished: start playing audio overview immediately
-        setTimeout(() => {
-          setAudioPlaying(true);
-          const startTime = Date.now();
-          const duration = 6000;
-
-          const progressInterval = setInterval(() => {
-            const elapsed = Date.now() - startTime;
-            const p = Math.min(elapsed / duration, 1);
-            setAudioProgress(p * 100);
-
-            if (p >= 1) {
-              clearInterval(progressInterval);
-              setAudioPlaying(false);
-              // Advance to Step 5
-              setTimeout(() => {
-                setActiveStep(5);
-                gentleScrollTo(step5Ref);
-              }, 800);
-            }
-          }, 60);
-        }, 400);
+    const handleWheel = (e: WheelEvent) => {
+      // Don't intercept if user is inside a scrollable element on the final page
+      const target = e.target as HTMLElement;
+      if (currentPage === 5 && target.closest('.unit-grid')) {
+        // allow local scrolling
+        return;
       }
-    }, 38);
 
-    return () => clearInterval(typeInterval);
-  }, [activeStep]);
+      if (Math.abs(e.deltaY) > 25) {
+        if (e.deltaY > 0) {
+          nextPage();
+        } else {
+          prevPage();
+        }
+      }
+    };
 
-  // 6. Step 5 (Slides Hook) -> Auto-Advance Slides -> Step 6 (Units)
-  useEffect(() => {
-    if (activeStep !== 5) return;
-    setSlideIndex(0);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault();
+        nextPage();
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevPage();
+      }
+    };
 
-    const s1 = setTimeout(() => setSlideIndex(1), 1600);
-    const s2 = setTimeout(() => setSlideIndex(2), 3200);
-    const s3 = setTimeout(() => {
-      setActiveStep(6);
-      gentleScrollTo(unitsRef);
-    }, 4800);
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      clearTimeout(s1);
-      clearTimeout(s2);
-      clearTimeout(s3);
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeStep]);
+  }, [isLoading, currentPage, nextPage, prevPage]);
 
-  // Quick skip directly to units
-  const handleSkipToUnits = () => {
-    setActiveStep(6);
-    unitsRef.current?.scrollIntoView({ behavior: 'smooth' });
+  /* ─────────────────────────────────────────────────────────────
+     Mobile Touch Swipe Handlers
+  ───────────────────────────────────────────────────────────── */
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartYRef.current = e.touches[0].clientY;
   };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaY = touchStartYRef.current - touchEndY;
+
+    // Minimum swipe threshold (40px)
+    if (Math.abs(deltaY) > 40) {
+      if (deltaY > 0) {
+        nextPage(); // swipe up -> next page
+      } else {
+        prevPage(); // swipe down -> prev page
+      }
+    }
+  };
+
+  /* ─────────────────────────────────────────────────────────────
+     Page 4: Typewriter Effect Trigger
+  ───────────────────────────────────────────────────────────── */
+  useEffect(() => {
+    if (currentPage === 3) {
+      setTypedAudioText("");
+      setTypingComplete(false);
+      let idx = 0;
+
+      const typeTimer = setInterval(() => {
+        idx++;
+        setTypedAudioText(audioExactText.slice(0, idx));
+
+        if (idx >= audioExactText.length) {
+          clearInterval(typeTimer);
+          setTypingComplete(true);
+          setAudioPlaying(true);
+        }
+      }, 34);
+
+      return () => clearInterval(typeTimer);
+    } else {
+      setAudioPlaying(false);
+    }
+  }, [currentPage]);
+
+  // Video progress animation when on Page 3
+  useEffect(() => {
+    if (currentPage === 2) {
+      setVideoPlaying(true);
+      const interval = setInterval(() => {
+        setVideoProgress((prev) => (prev >= 95 ? 10 : prev + 2));
+      }, 200);
+      return () => clearInterval(interval);
+    } else {
+      setVideoPlaying(false);
+    }
+  }, [currentPage]);
 
   return (
     <>
-      {/* ─── 1. Minimal Loading Animation Screen (1.6s) ──────────────── */}
+      {/* ─── 1. Active Theory Inspired Loading Screen ───────────────── */}
       {isLoading && (
         <div style={{
           position: 'fixed',
           inset: 0,
           zIndex: 9999,
-          backgroundColor: '#F8FAFC',
+          backgroundColor: '#0F172A',
+          color: '#F8FAFC',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '2rem',
+          justifyContent: 'space-between',
+          padding: '2.5rem 2rem',
+          fontFamily: 'monospace',
         }}>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '1.25rem',
-            fontWeight: 500,
-            color: '#0F172A',
-            letterSpacing: '-0.01em',
-            marginBottom: '1rem',
-          }}>
-            Plug Wa Notes
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', letterSpacing: '0.12em', color: '#94A3B8' }}>
+            <span>PLUG WA NOTES</span>
+            <span>SOEN 2.1 · KISII</span>
           </div>
-          <div style={{
-            width: '8rem',
-            height: '3px',
-            backgroundColor: '#E2E8F0',
-            borderRadius: '9999px',
-            overflow: 'hidden',
-          }}>
+
+          <div style={{ textAlign: 'center' }}>
             <div style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: '#1E40AF',
-              borderRadius: '9999px',
-              animation: 'fadeInSoft 1.5s ease-out forwards',
-            }} />
+              fontSize: '3.5rem',
+              fontWeight: 500,
+              fontFamily: 'var(--font-display)',
+              letterSpacing: '-0.02em',
+              color: '#F8FAFC',
+            }}>
+              {loadPercent.toString().padStart(2, '0')}%
+            </div>
+            <div style={{
+              width: '12rem',
+              height: '2px',
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              margin: '1.25rem auto 0',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${loadPercent}%`,
+                backgroundColor: '#0D9488',
+                transition: 'width 0.05s linear',
+              }} />
+            </div>
+            <p style={{ fontSize: '0.6875rem', color: '#94A3B8', marginTop: '0.875rem', letterSpacing: '0.08em' }}>
+              INITIALIZING KNOWLEDGE BANK
+            </p>
           </div>
-          <p style={{
-            fontSize: '0.75rem',
-            color: '#475569',
-            marginTop: '0.75rem',
-          }}>
-            Loading your study materials...
-          </p>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: '#64748B' }}>
+            <span>DIRECT ACCESS</span>
+            <span>V2.1.0</span>
+          </div>
         </div>
       )}
 
-      {/* ─── Main Content Shell ──────────────────────────────────────── */}
-      <main className="page-shell" style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
-        
-        {/* Sticky Minimal Navigation with quick skip */}
-        <nav className="nav-bar" style={{ marginBottom: '2rem' }}>
-          <div>
-            <span className="nav-brand">Plug Wa Notes</span>
-            <span style={{ fontSize: '0.75rem', color: '#475569', marginLeft: '0.5rem' }}>SOEN 2.1</span>
+      {/* ─── 2. Full-Page Container (100vh Viewport) ───────────────── */}
+      <div
+        className="fullpage-wrapper"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Fixed Minimal Header */}
+        <header style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '4rem',
+          zIndex: 60,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 1.5rem',
+          maxWidth: '720px',
+          margin: '0 auto',
+          pointerEvents: 'none',
+        }}>
+          <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{
+              fontFamily: 'var(--font-display)',
+              fontWeight: 600,
+              fontSize: '1rem',
+              color: '#0F172A',
+            }}>
+              Plug Wa Notes
+            </span>
+            <span style={{
+              fontSize: '0.6875rem',
+              fontFamily: 'monospace',
+              color: '#475569',
+              background: '#F1F5F9',
+              padding: '0.125rem 0.375rem',
+              border: '1px solid #E2E8F0',
+            }}>
+              0{currentPage + 1} / 0{TOTAL_PAGES}
+            </span>
           </div>
-          <button
-            onClick={handleSkipToUnits}
-            style={{
-              fontSize: '0.75rem',
-              color: '#1E40AF',
-              background: '#EFF6FF',
-              border: '1px solid #BFDBFE',
-              padding: '0.25rem 0.625rem',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: 500,
-            }}
-          >
-            Pick Unit &darr;
-          </button>
-        </nav>
 
-        <div className="beats-stack" style={{ flex: 1 }}>
-
-          {/* ─── 2. Message 1 – Welcome ─────────────────────────────── */}
-          <section
-            ref={step1Ref}
-            className="beat-first anim-fade-in"
-            style={{ minHeight: 'auto', paddingBottom: '1rem' }}
-          >
-            <h1
-              className="h1"
+          {currentPage < TOTAL_PAGES - 1 ? (
+            <button
+              onClick={() => goToPage(5)}
               style={{
-                color: '#0F172A',
-                fontSize: '1.625rem',
-                lineHeight: 1.3,
+                pointerEvents: 'auto',
+                fontSize: '0.75rem',
                 fontWeight: 500,
-                maxWidth: '620px',
+                color: '#1E40AF',
+                backgroundColor: '#EFF6FF',
+                border: '1px solid #BFDBFE',
+                padding: '0.3125rem 0.75rem',
+                cursor: 'pointer',
               }}
             >
-              Welcome to Your Knowledge Bank &ndash; where learning is made fun.
-            </h1>
-            <p style={{ fontSize: '0.875rem', color: '#475569', marginTop: '0.5rem' }}>
-              Clean lecture notes, explainer video reviews, and quick revision slides for Kisii University classmates.
-            </p>
+              Skip to Units &darr;
+            </button>
+          ) : (
+            <button
+              onClick={() => goToPage(0)}
+              style={{
+                pointerEvents: 'auto',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                color: '#475569',
+                backgroundColor: '#F1F5F9',
+                border: '1px solid #E2E8F0',
+                padding: '0.3125rem 0.75rem',
+                cursor: 'pointer',
+              }}
+            >
+              Back to top &uarr;
+            </button>
+          )}
+        </header>
+
+        {/* Floating Right Pagination HUD */}
+        <nav className="fullpage-hud" aria-label="Page navigation">
+          {[0, 1, 2, 3, 4, 5].map((idx) => {
+            const isTeal = idx === 2 || idx === 4;
+            const isActive = currentPage === idx;
+            return (
+              <button
+                key={idx}
+                onClick={() => goToPage(idx)}
+                aria-label={`Go to section ${idx + 1}`}
+                className={`fullpage-dot ${isActive ? (isTeal ? 'active-teal' : 'active') : ''}`}
+              />
+            );
+          })}
+        </nav>
+
+        {/* ─── Animated Vertical Track ──────────────────────────────── */}
+        <div
+          className="fullpage-track"
+          style={{
+            transform: `translate3d(0, -${currentPage * 100}%, 0)`,
+          }}
+        >
+          {/* ═══════════════════════════════════════════════════════════
+              PAGE 1 – Welcome
+          ═══════════════════════════════════════════════════════════ */}
+          <section className="fullpage-slide" key={`slide-0-${animKey}`}>
+            <div /> {/* Top spacer */}
+
+            <div style={{ textAlign: 'left', maxWidth: '620px' }}>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#1E40AF',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                fontFamily: 'monospace',
+              }}>
+                Kisii University · SOEN 2.1
+              </span>
+
+              <h1 style={{
+                fontSize: '2rem',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 500,
+                color: '#0F172A',
+                lineHeight: 1.25,
+                marginTop: '0.75rem',
+                letterSpacing: '-0.01em',
+              }}>
+                &ldquo;Welcome to Your Knowledge Bank - where learning is made fun&rdquo;
+              </h1>
+
+              <p style={{
+                fontSize: '0.9375rem',
+                color: '#475569',
+                marginTop: '1rem',
+                lineHeight: 1.5,
+              }}>
+                Get clean lecture notes, explainer video reviews, audio recaps, and exam slides.
+                Built by coursemates, ready in one click.
+              </p>
+            </div>
+
+            {/* Bottom action trigger */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+              <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                Swipe up or scroll to explore
+              </span>
+              <button
+                onClick={nextPage}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.625rem 1.25rem',
+                  backgroundColor: '#1E40AF',
+                  color: '#FFFFFF',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>Pata Notes</span>
+                <span>&darr;</span>
+              </button>
+            </div>
           </section>
 
-          {/* ─── 3. Message 2 – Notes Hook & PDF Scroll ─────────────── */}
-          <section
-            ref={step2Ref}
-            className="beat-with-backdrop"
-            style={{
-              opacity: activeStep >= 2 ? 1 : 0.45,
-              transition: 'opacity 0.4s ease',
-            }}
-          >
-            <div className="beat-backdrop-shape beat-backdrop-blue" aria-hidden="true" />
-            
-            <div className={`beat-heading-blue ${activeStep >= 2 ? 'anim-fly-left' : ''}`}>
-              <h2 style={{ color: '#1E40AF', fontSize: '1.25rem', fontWeight: 500 }}>
-                Feeling behind in class? No stress &mdash; Pata notes hapa.
+          {/* ═══════════════════════════════════════════════════════════
+              PAGE 2 – Notes
+          ═══════════════════════════════════════════════════════════ */}
+          <section className="fullpage-slide" key={`slide-1-${animKey}`}>
+            <div>
+              <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#1E40AF', fontWeight: 600 }}>
+                02 / NOTES FORMAT
+              </span>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 500,
+                color: '#1E40AF',
+                lineHeight: 1.3,
+                marginTop: '0.375rem',
+              }}>
+                &ldquo;Feeling behind in class? No stress - Pata notes hapa.&rdquo;
               </h2>
             </div>
 
-            {/* Screen-recorded clean notes PDF preview with auto-scrolling */}
+            {/* MEDIA PLACEHOLDER: Clean Notes PDF Viewer Component */}
             <div
-              className="format-demo-wrap"
+              onClick={() => setNotesScrolled((prev) => !prev)}
               style={{
                 background: '#FFFFFF',
                 border: '1px solid #E2E8F0',
-                padding: '1rem',
+                padding: '1.125rem',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                 cursor: 'pointer',
               }}
-              onClick={() => { setNotesPlaying(true); setNotesProgress(0); }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.625rem' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#0F172A' }}>
-                  Clean notes sample (PDF)
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0F172A' }}>
+                  Clean Notes PDF Viewer
                 </span>
                 <span style={{ fontSize: '0.6875rem', color: '#1E40AF', fontWeight: 500 }}>
-                  {notesPlaying ? 'Scrolling notes...' : 'Auto-previewing'}
+                  {notesScrolled ? 'Page 2/12' : 'Tap to scroll page'}
                 </span>
               </div>
 
-              {/* Scrolling Simulated PDF Document */}
+              {/* PDF Document Preview Canvas */}
               <div style={{
-                position: 'relative',
-                height: '8.5rem',
+                height: '9rem',
                 background: '#F8FAFC',
                 border: '1px solid #E2E8F0',
-                overflow: 'hidden',
-                borderRadius: '4px',
                 padding: '0.875rem',
+                overflow: 'hidden',
+                position: 'relative',
               }}>
                 <div style={{
-                  transform: `translateY(-${notesProgress * 110}px)`,
-                  transition: 'transform 0.1s linear',
+                  transform: notesScrolled ? 'translateY(-70px)' : 'translateY(0)',
+                  transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 }}>
-                  {/* Page header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.375rem', marginBottom: '0.5rem' }}>
+                  <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '0.375rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#1E40AF' }}>SOEN 2.1 LECTURE SUMMARY</span>
-                    <span style={{ fontSize: '0.625rem', color: '#475569' }}>PAGE 1/12</span>
+                    <span style={{ fontSize: '0.625rem', color: '#64748B' }}>EXAM HIGHLIGHTS</span>
                   </div>
-
-                  {/* Note block 1 */}
-                  <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#0F172A', lineHeight: 1.4 }}>
-                    <strong>1.1 Discrete Relations &amp; Partitions</strong>
-                    <p style={{ color: '#475569', fontSize: '0.6875rem', margin: '0.25rem 0' }}>
-                      A relation R on set A is an equivalence relation if and only if it satisfies reflexivity, symmetry, and transitivity.
-                    </p>
+                  <p style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#0F172A', lineHeight: 1.45 }}>
+                    <strong>Theorem 2.1 (Equivalence Partition):</strong> Let R be an equivalence relation on set A.
+                    Then R partitions A into disjoint non-empty subsets.
+                  </p>
+                  <div style={{ background: '#EFF6FF', borderLeft: '3px solid #1E40AF', padding: '0.375rem 0.5rem', margin: '0.5rem 0', fontSize: '0.6875rem', fontFamily: 'monospace', color: '#1E40AF' }}>
+                    Proof Sketch: &forall; x &isin; A, x &isin; [x] by reflexivity &hellip;
                   </div>
-
-                  {/* Visual formula chip */}
-                  <div style={{ background: '#EFF6FF', borderLeft: '2px solid #1E40AF', padding: '0.375rem 0.5rem', margin: '0.5rem 0', fontSize: '0.6875rem', fontFamily: 'monospace', color: '#1E40AF' }}>
-                    Theorem: [a] = &#123; x &isin; A : x R a &#125; &rArr; A = &cup; [a]
-                  </div>
-
-                  {/* Note block 2 */}
-                  <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#0F172A', marginTop: '0.75rem', lineHeight: 1.4 }}>
-                    <strong>1.2 Exam Model Problem</strong>
-                    <p style={{ color: '#475569', fontSize: '0.6875rem', margin: '0.25rem 0' }}>
-                      Given set S = &#123;1, 2, 3, 4, 5&#125; modulo 3, write all distinct equivalence classes and prove disjointness.
-                    </p>
-                  </div>
-
-                  {/* Note block 3 */}
-                  <div style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#0F172A', marginTop: '0.75rem', lineHeight: 1.4 }}>
-                    <strong>1.3 Verification Matrix</strong>
-                    <div style={{ height: '0.375rem', width: '90%', background: '#E2E8F0', marginTop: '0.25rem' }} />
-                    <div style={{ height: '0.375rem', width: '70%', background: '#E2E8F0', marginTop: '0.25rem' }} />
-                  </div>
-                </div>
-
-                {/* Simulated scrollbar indicator */}
-                <div style={{
-                  position: 'absolute',
-                  top: '4px',
-                  right: '4px',
-                  width: '3px',
-                  height: 'calc(100% - 8px)',
-                  background: '#E2E8F0',
-                  borderRadius: '2px',
-                }}>
-                  <div style={{
-                    width: '100%',
-                    height: '35%',
-                    backgroundColor: '#1E40AF',
-                    borderRadius: '2px',
-                    transform: `translateY(${notesProgress * 180}%)`,
-                    transition: 'transform 0.1s linear',
-                  }} />
+                  <p style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#0F172A', marginTop: '0.5rem' }}>
+                    <strong>Worked CAT Problem 1:</strong> Calculate partition classes for integers modulo 5.
+                  </p>
                 </div>
               </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: '#64748B', marginTop: '0.625rem' }}>
+                <span>Handwritten lecture transcription</span>
+                <span style={{ color: '#1E40AF' }}>Instant download ready</span>
+              </div>
+            </div>
+
+            {/* Bottom action trigger */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+              <button
+                onClick={prevPage}
+                style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}
+              >
+                &uarr; Back
+              </button>
+              <button
+                onClick={nextPage}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.625rem 1.25rem',
+                  backgroundColor: '#0D9488',
+                  color: '#FFFFFF',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>Video Review</span>
+                <span>&darr;</span>
+              </button>
             </div>
           </section>
 
-          {/* ─── 4. Message 3 – Video Review ────────────────────────── */}
-          <section
-            ref={step3Ref}
-            className="beat-with-backdrop"
-            style={{
-              opacity: activeStep >= 3 ? 1 : 0.45,
-              transition: 'opacity 0.4s ease',
-            }}
-          >
-            <div className="beat-backdrop-shape beat-backdrop-teal" aria-hidden="true" />
-            
-            <div className={`beat-heading-teal ${activeStep >= 3 ? 'anim-fly-right' : ''}`}>
-              <h2 style={{ color: '#0D9488', fontSize: '1.25rem', fontWeight: 500 }}>
-                Some units just make more sense after watching &mdash; Pata video review hapa ndani.
+          {/* ═══════════════════════════════════════════════════════════
+              PAGE 3 – Video Review
+          ═══════════════════════════════════════════════════════════ */}
+          <section className="fullpage-slide" key={`slide-2-${animKey}`}>
+            <div>
+              <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#0D9488', fontWeight: 600 }}>
+                03 / VIDEO REVIEW FORMAT
+              </span>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 500,
+                color: '#0D9488',
+                lineHeight: 1.3,
+                marginTop: '0.375rem',
+              }}>
+                &ldquo;Some units just make more sense in visuals - Pata video review hapa ndani.&rdquo;
               </h2>
             </div>
 
-            {/* Video clip player simulator (6 seconds) */}
+            {/* MEDIA PLACEHOLDER: Video Player Component */}
             <div
-              className="format-demo-wrap"
+              onClick={() => setVideoPlaying((prev) => !prev)}
               style={{
                 background: '#0F172A',
                 color: '#FFFFFF',
-                padding: '1rem',
                 border: '1px solid #334155',
-                borderRadius: '4px',
+                padding: '1.125rem',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                 cursor: 'pointer',
               }}
-              onClick={() => { setVideoPlaying(true); setVideoProgress(0); }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: '0.6875rem', fontFamily: 'monospace', color: '#0D9488', fontWeight: 600 }}>
@@ -464,198 +561,242 @@ export default function HomePage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   background: videoPlaying ? '#0D9488' : 'transparent',
-                  transition: 'background 0.2s ease',
                 }}>
-                  <span style={{ fontSize: '0.625rem', paddingLeft: '1px', color: '#fff' }}>&#9654;</span>
+                  <span style={{ fontSize: '0.625rem', paddingLeft: '1px', color: '#fff' }}>
+                    {videoPlaying ? '❚❚' : '▶'}
+                  </span>
                 </div>
               </div>
 
-              {/* Whiteboard animation simulation */}
-              <div style={{ textAlign: 'center', padding: '0.875rem 0' }}>
-                <p style={{ fontFamily: 'monospace', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.9)' }}>
-                  {videoPlaying ? 'Walking through algorithm trace & diagrams...' : 'Visual walkthrough of complex concepts'}
+              {/* Video visual screen */}
+              <div style={{
+                height: '8.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                padding: '0.5rem',
+                background: '#1E293B',
+              }}>
+                <p style={{ fontFamily: 'monospace', fontSize: '0.8125rem', color: '#F8FAFC' }}>
+                  {videoPlaying ? 'Whiteboard trace: Step-by-step algorithm' : 'Visual step-by-step walkthrough'}
                 </p>
-                <div style={{
-                  display: 'inline-flex',
-                  gap: '0.5rem',
-                  marginTop: '0.5rem',
-                  fontSize: '0.6875rem',
-                  color: '#94A3B8',
-                }}>
-                  <span>&bull; Step 1: Input Matrix</span>
-                  <span>&bull; Step 2: Traverse</span>
-                  <span>&bull; Step 3: Result</span>
-                </div>
+                <span style={{ fontSize: '0.6875rem', color: '#94A3B8', marginTop: '0.375rem' }}>
+                  [ Video clip placeholder &middot; Swappable for Cloudinary MP4 ]
+                </span>
               </div>
 
-              {/* Progress Scrub Bar */}
-              <div style={{ marginTop: '0.5rem' }}>
-                <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.15)', overflow: 'hidden', borderRadius: '2px' }}>
+              {/* Scrubber timeline */}
+              <div style={{ marginTop: '0.75rem' }}>
+                <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.2)', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
                     width: `${videoProgress}%`,
                     background: '#0D9488',
-                    transition: 'width 0.1s linear',
+                    transition: 'width 0.2s linear',
                   }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.625rem', fontFamily: 'monospace', color: '#94A3B8', marginTop: '0.375rem' }}>
-                  <span>{videoPlaying ? `00:0${Math.floor(videoProgress / 16)}` : '00:00'}</span>
-                  <span>06:00 clip preview</span>
+                  <span>02:15</span>
+                  <span>08:40 total duration</span>
                 </div>
               </div>
             </div>
+
+            {/* Bottom action trigger */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+              <button
+                onClick={prevPage}
+                style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}
+              >
+                &uarr; Back
+              </button>
+              <button
+                onClick={nextPage}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.625rem 1.25rem',
+                  backgroundColor: '#1E40AF',
+                  color: '#FFFFFF',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>Audio Overview</span>
+                <span>&darr;</span>
+              </button>
+            </div>
           </section>
 
-          {/* ─── 5. Message 4 – Audio Overview (Typewriter + Soundwave) ─ */}
-          <section
-            ref={step4Ref}
-            className="beat-with-backdrop"
-            style={{
-              opacity: activeStep >= 4 ? 1 : 0.45,
-              transition: 'opacity 0.4s ease',
-            }}
-          >
-            <div className="beat-backdrop-shape beat-backdrop-blue" aria-hidden="true" />
-            
-            <div className="beat-heading-blue">
-              <h2 style={{ color: '#1E40AF', fontSize: '1.25rem', fontWeight: 500, minHeight: '3.25rem' }}>
-                {activeStep >= 4 ? audioHookText : ""}
-                {activeStep === 4 && audioHookText.length < audioHookFullText.length && (
-                  <span className="typewriter-cursor" />
-                )}
+          {/* ═══════════════════════════════════════════════════════════
+              PAGE 4 – Audio (Character-by-Character Typewriter)
+          ═══════════════════════════════════════════════════════════ */}
+          <section className="fullpage-slide" key={`slide-3-${animKey}`}>
+            <div>
+              <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#1E40AF', fontWeight: 600 }}>
+                04 / AUDIO OVERVIEW FORMAT
+              </span>
+              <h2 style={{
+                fontSize: '1.375rem',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 500,
+                color: '#1E40AF',
+                lineHeight: 1.35,
+                marginTop: '0.375rem',
+                minHeight: '4.5rem',
+              }}>
+                &ldquo;{typedAudioText}&rdquo;
+                {!typingComplete && <span className="typewriter-cursor" />}
               </h2>
             </div>
 
-            {/* Audio Overview Player & Soundwave animation */}
+            {/* MEDIA PLACEHOLDER: Audio Waveform Equalizer */}
             <div
-              className="format-demo-wrap"
+              onClick={() => setAudioPlaying((prev) => !prev)}
               style={{
                 background: '#EFF6FF',
                 border: '1px solid #BFDBFE',
-                padding: '1rem',
-                borderRadius: '4px',
+                padding: '1.125rem',
                 cursor: 'pointer',
               }}
-              onClick={() => { setAudioPlaying(true); setAudioProgress(0); }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#1E40AF' }}>
-                  Audio overview walk-through
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1E40AF' }}>
+                  Audio Overview Player
                 </span>
-                <span style={{ fontSize: '0.6875rem', color: audioPlaying ? '#1E40AF' : '#475569', fontWeight: 500 }}>
-                  {audioPlaying ? 'Playing overview...' : 'Tap to play audio'}
+                <span style={{ fontSize: '0.6875rem', color: '#1E40AF', fontWeight: 500 }}>
+                  {audioPlaying ? 'Playing (1.25x)' : 'Tap to listen'}
                 </span>
               </div>
 
-              {/* Bouncing Sound-Wave Equalizer */}
+              {/* Bouncing Equalizer Bars — pure CSS animation */}
               <div style={{
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: 'flex-end',
                 justifyContent: 'center',
-                gap: '0.3125rem',
-                height: '3.5rem',
-                padding: '0 0.5rem',
+                gap: '0.375rem',
+                height: '4rem',
               }}>
-                {[16, 28, 42, 22, 36, 48, 30, 44, 18, 34, 46, 24, 38, 20, 32, 40].map((h, i) => (
+                {[14, 28, 42, 24, 38, 50, 30, 44, 20, 36, 48, 26, 40, 22, 34, 46, 18, 30].map((h, i) => (
                   <div
                     key={i}
+                    className={`eq-bar ${audioPlaying ? 'playing' : 'paused'}`}
                     style={{
-                      width: '0.3125rem',
-                      height: audioPlaying ? `${((h * 1.2) % 36) + 10}px` : '6px',
-                      backgroundColor: '#1E40AF',
-                      borderRadius: '2px',
-                      opacity: audioPlaying ? 0.9 : 0.35,
-                      transition: 'height 160ms ease-in-out, opacity 160ms ease-in-out',
-                      transitionDelay: `${(i % 6) * 30}ms`,
-                    }}
+                      '--eq-h': `${Math.max(10, (h * 1.3) % 44 + 8)}px`,
+                      '--eq-dur': `${0.5 + (i % 5) * 0.07}s`,
+                      animationDelay: audioPlaying ? `${(i % 7) * 0.06}s` : '0s',
+                    } as React.CSSProperties}
                   />
                 ))}
               </div>
 
-              {/* Audio progress bar */}
-              <div style={{ marginTop: '0.625rem' }}>
-                <div style={{ width: '100%', height: '3px', background: '#DBEAFE', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${audioProgress}%`,
-                    background: '#1E40AF',
-                    transition: 'width 0.1s linear',
-                  }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.625rem', color: '#475569', marginTop: '0.375rem' }}>
-                  <span>Listen on your commute</span>
-                  <span>1.25x high-yield</span>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: '#475569', marginTop: '0.75rem', borderTop: '1px solid #DBEAFE', paddingTop: '0.5rem' }}>
+                <span>[ Audio placeholder &middot; Swappable for Cloudinary M4A ]</span>
+                <span style={{ fontFamily: 'monospace' }}>Commute Recap</span>
               </div>
+            </div>
+
+            {/* Bottom action trigger */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+              <button
+                onClick={prevPage}
+                style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}
+              >
+                &uarr; Back
+              </button>
+              <button
+                onClick={nextPage}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.625rem 1.25rem',
+                  backgroundColor: '#0D9488',
+                  color: '#FFFFFF',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>Revision Slides</span>
+                <span>&darr;</span>
+              </button>
             </div>
           </section>
 
-          {/* ─── 6. Message 5 – Slides Hook ─────────────────────────── */}
-          <section
-            ref={step5Ref}
-            className="beat-with-backdrop"
-            style={{
-              opacity: activeStep >= 5 ? 1 : 0.45,
-              transition: 'opacity 0.4s ease',
-            }}
-          >
-            <div className="beat-backdrop-shape beat-backdrop-teal" aria-hidden="true" />
-            
-            <div className={`beat-heading-teal ${activeStep >= 5 ? 'anim-fly-up' : ''}`}>
-              <h2 style={{ color: '#0D9488', fontSize: '1.25rem', fontWeight: 500 }}>
-                Need a short version before CATs or exams? Pata slides hapa.
+          {/* ═══════════════════════════════════════════════════════════
+              PAGE 5 – Slides
+          ═══════════════════════════════════════════════════════════ */}
+          <section className="fullpage-slide" key={`slide-4-${animKey}`}>
+            <div>
+              <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#0D9488', fontWeight: 600 }}>
+                05 / EXAM SLIDES FORMAT
+              </span>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 500,
+                color: '#0D9488',
+                lineHeight: 1.3,
+                marginTop: '0.375rem',
+              }}>
+                &ldquo;Need a short version before cats or exams? Pata slides hapa.&rdquo;
               </h2>
             </div>
 
-            {/* Slide Deck preview */}
+            {/* MEDIA PLACEHOLDER: Slide Deck Component */}
             <div
-              className="format-demo-wrap"
+              onClick={() => setSlideIndex((prev) => (prev + 1) % 3)}
               style={{
                 background: '#F0FDFA',
                 border: '1px solid #99F6E4',
-                padding: '1rem',
-                borderRadius: '4px',
+                padding: '1.125rem',
                 cursor: 'pointer',
               }}
-              onClick={() => setSlideIndex((prev) => (prev + 1) % 3)}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#0D9488' }}>
-                  Exam revision slide deck
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0D9488' }}>
+                  Exam Slide Deck
                 </span>
                 <span style={{ fontSize: '0.6875rem', fontFamily: 'monospace', color: '#0D9488', fontWeight: 600 }}>
                   Slide {slideIndex + 1} of 3
                 </span>
               </div>
 
-              <div style={{ padding: '0.5rem 0', minHeight: '3.75rem' }}>
+              <div style={{ padding: '0.75rem 0', minHeight: '4.5rem' }}>
                 {slideIndex === 0 && (
                   <div>
-                    <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0F172A' }}>
-                      Slide 1: Core Definitions &amp; High-Yield Formulas
+                    <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0F172A' }}>
+                      1. Core Definitions &amp; Exam Terminology
                     </p>
-                    <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: '0.25rem' }}>
-                      Quick-reference bullet summary of the top definitions asked in past papers.
+                    <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: '0.25rem', lineHeight: 1.4 }}>
+                      Direct bullet-point formulas and concepts asked in past paper Section A.
                     </p>
                   </div>
                 )}
                 {slideIndex === 1 && (
                   <div>
-                    <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0F172A' }}>
-                      Slide 2: Architecture &amp; System Flow Diagrams
+                    <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0F172A' }}>
+                      2. Diagram &amp; Architecture Layouts
                     </p>
-                    <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: '0.25rem' }}>
-                      Visual charts to sketch easily in answering 10-mark essay questions.
+                    <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: '0.25rem', lineHeight: 1.4 }}>
+                      Schematic flowcharts and ER/UML models ready to sketch in Section B.
                     </p>
                   </div>
                 )}
                 {slideIndex === 2 && (
                   <div>
-                    <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0F172A' }}>
-                      Slide 3: Common Pitfalls &amp; Exam Traps
+                    <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0F172A' }}>
+                      3. Common Marking Pitfalls &amp; Mistakes
                     </p>
-                    <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: '0.25rem' }}>
-                      Common student errors pointed out during coursework marking.
+                    <p style={{ fontSize: '0.75rem', color: '#475569', marginTop: '0.25rem', lineHeight: 1.4 }}>
+                      Common student errors pointed out during previous semester exam reviews.
                     </p>
                   </div>
                 )}
@@ -669,38 +810,72 @@ export default function HomePage() {
                     style={{
                       height: '4px',
                       borderRadius: '9999px',
-                      width: slideIndex === i ? '1.25rem' : '0.375rem',
+                      width: slideIndex === i ? '1.5rem' : '0.375rem',
                       backgroundColor: slideIndex === i ? '#0D9488' : '#99F6E4',
                       transition: 'all 0.2s ease',
                     }}
                   />
                 ))}
               </div>
+
+              <div style={{ fontSize: '0.6875rem', color: '#64748B', marginTop: '0.625rem', textAlign: 'center' }}>
+                [ Slides placeholder &middot; Swappable for Cloudinary Slides ]
+              </div>
+            </div>
+
+            {/* Bottom action trigger */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+              <button
+                onClick={prevPage}
+                style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}
+              >
+                &uarr; Back
+              </button>
+              <button
+                onClick={nextPage}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.625rem 1.25rem',
+                  backgroundColor: '#1E40AF',
+                  color: '#FFFFFF',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>Pick Unit</span>
+                <span>&darr;</span>
+              </button>
             </div>
           </section>
 
-          {/* ─── 7. Bottom Section – Unit Links ─────────────────────── */}
-          <section
-            ref={unitsRef}
-            className="section-divider"
-            style={{
-              paddingTop: '2.5rem',
-              borderTop: '1px solid #E2E8F0',
-              opacity: 1,
-              display: 'block',
-            }}
-          >
-            <div style={{ marginBottom: '1.25rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 500, color: '#0F172A' }}>
+          {/* ═══════════════════════════════════════════════════════════
+              PAGE 6 – Unit Links Section (Full Viewport)
+          ═══════════════════════════════════════════════════════════ */}
+          <section className="fullpage-slide" key={`slide-5-${animKey}`} style={{ overflowY: 'auto' }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#1E40AF', fontWeight: 600 }}>
+                06 / SELECT COURSE UNIT
+              </span>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 500,
+                color: '#0F172A',
+                marginTop: '0.25rem',
+              }}>
                 Pick your unit
               </h2>
               <p style={{ fontSize: '0.8125rem', color: '#475569', marginTop: '0.25rem' }}>
-                Direct access to notes, video walkthroughs, audio overviews, and slide packs.
+                Direct access to notes, explainer video, audio recap, and slide packs.
               </p>
             </div>
 
-            {/* 6 large, clear unit tap targets opening in same tab */}
-            <div className="unit-grid">
+            {/* 6 large unit links opening in same tab */}
+            <div className="unit-grid" style={{ marginBottom: '1.5rem' }}>
               {UNITS.map((unit) => {
                 const slug = unit.code.toLowerCase().replace(/[^a-z0-9]/g, '');
                 return (
@@ -711,11 +886,11 @@ export default function HomePage() {
                     style={{
                       background: '#FFFFFF',
                       border: '1px solid #E2E8F0',
-                      padding: '1.125rem',
+                      padding: '1rem',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'center',
-                      minHeight: '5.5rem',
+                      minHeight: '5.25rem',
                     }}
                   >
                     <span style={{
@@ -739,14 +914,30 @@ export default function HomePage() {
                 );
               })}
             </div>
-          </section>
-        </div>
 
-        <footer className="page-footer" style={{ marginTop: '4rem', borderTop: '1px solid #E2E8F0' }}>
-          <p className="page-footer-brand" style={{ color: '#0F172A' }}>Plug Wa Notes</p>
-          <p style={{ color: '#475569' }}>Kisii University SOEN 2.1</p>
-        </footer>
-      </main>
+            {/* Footer with return to start */}
+            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                onClick={() => goToPage(0)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '0.75rem',
+                  color: '#1E40AF',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                &uarr; Back to beginning
+              </button>
+              <span style={{ fontSize: '0.6875rem', color: '#64748B' }}>
+                Plug Wa Notes · SOEN 2.1
+              </span>
+            </div>
+          </section>
+
+        </div>
+      </div>
     </>
   );
 }
