@@ -11,16 +11,8 @@ export const UnitCard: React.FC<UnitCardProps> = ({ unit }) => {
 
   return (
     <Link href={`/unit/${slug}`} className="unit-card">
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between', gap: '0.625rem' }}>
-        <div>
-          <span className="unit-card-code">{unit.code}</span>
-          <p className="unit-card-name">{unit.name}</p>
-        </div>
-        <div className="unit-card-footer">
-          <span>View study pack</span>
-          <span className="unit-card-arrow">&#8594;</span>
-        </div>
-      </div>
+      <span className="unit-card-code">{unit.code}</span>
+      <p className="unit-card-name">{unit.name}</p>
     </Link>
   );
 };
