@@ -2,14 +2,15 @@
 
 /* ─── Design Tokens ─────────────────────────────────────────── */
 :root {
-  --paper:     #F6F4EF;
-  --ink:       #23211E;
-  --ink-muted: #5B584F;
-  --line:      #DEDAD0;
-  --blue:      #2450C8;
-  --blue-tint: #EAF2FF;
-  --teal:      #157F72;
-  --teal-tint: #E7F3F1;
+  --paper:     #F8FAFC;
+  --paper-sub: #F1F5F9;
+  --ink:       #0F172A;
+  --ink-muted: #475569;
+  --line:      #E2E8F0;
+  --blue:      #1E40AF;
+  --blue-tint: #EFF6FF;
+  --teal:      #0D9488;
+  --teal-tint: #F0FDFA;
   --white:     #FFFFFF;
 
   --font-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
@@ -18,14 +19,14 @@
 
 /* ─── Tailwind Theme Bridge ──────────────────────────────────── */
 @theme inline {
-  --color-paper:     #F6F4EF;
-  --color-ink:       #23211E;
-  --color-ink-muted: #5B584F;
-  --color-line:      #DEDAD0;
-  --color-blue:      #2450C8;
-  --color-blue-tint: #EAF2FF;
-  --color-teal:      #157F72;
-  --color-teal-tint: #E7F3F1;
+  --color-paper:     #F8FAFC;
+  --color-ink:       #0F172A;
+  --color-ink-muted: #475569;
+  --color-line:      #E2E8F0;
+  --color-blue:      #1E40AF;
+  --color-blue-tint: #EFF6FF;
+  --color-teal:      #0D9488;
+  --color-teal-tint: #F0FDFA;
 }
 
 /* ─── Base Reset ─────────────────────────────────────────────── */
@@ -228,6 +229,80 @@ button:active,
   border-left: 3px solid var(--teal);
   padding-left: 0.875rem;
   margin-bottom: 0.75rem;
+}
+
+/* ─── Sequential Narrative Animation Keyframes ───────────────── */
+@keyframes fadeInSoft {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes flyInLeftSoft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes flyInRightSoft {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes flyInUpSoft {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes blinkCursor {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+@keyframes eqBounceAnim {
+  0%, 100% { height: 6px; }
+  50%      { height: 38px; }
+}
+
+@keyframes pdfScrollLoop {
+  0%   { transform: translateY(0); }
+  75%  { transform: translateY(-90px); }
+  100% { transform: translateY(-90px); }
+}
+
+.anim-fade-in {
+  animation: fadeInSoft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-fly-left {
+  animation: flyInLeftSoft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-fly-right {
+  animation: flyInRightSoft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-fly-up {
+  animation: flyInUpSoft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background-color: var(--blue);
+  vertical-align: middle;
+  margin-left: 3px;
+  animation: blinkCursor 0.8s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-in,
+  .anim-fly-left,
+  .anim-fly-right,
+  .anim-fly-up {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
 }
 
 .beat-heading-blue h2,
