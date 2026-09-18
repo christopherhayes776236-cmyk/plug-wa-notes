@@ -75,6 +75,52 @@ export async function getOrder(orderId: string): Promise<Order | null> {
   return null;
 }
 
+export async function getOrderByCheckoutRequestId(checkoutRequestId: string): Promise<Order | null> {
+  // Check in-memory store
+  for (const order of ordersMap.values()) {
+    if (order.checkoutRequestId === checkoutRequestId) {
+      return order;
+    }
+  }
+
+  // Check Supabase if configured
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const res = await fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/orders?checkout_request_id=eq.${encodeURIComponent(checkoutRequestId)}&select=*`,
+        {
+          headers: {
+            apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+        }
+      );
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows && rows.length > 0) {
+          const r = rows[0];
+          return {
+            id: r.id || r.order_id,
+            orderId: r.order_id,
+            unitCode: r.unit_code,
+            productType: r.product_type,
+            phone: r.phone,
+            amount: r.amount,
+            status: r.status,
+            fileUrl: r.file_url,
+            checkoutRequestId: r.checkout_request_id,
+            createdAt: r.created_at,
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Supabase read error:', e);
+    }
+  }
+
+  return null;
+}
+
 export async function updateOrderStatus(
   orderId: string,
   status: 'pending' | 'paid' | 'failed' | 'cancelled',
