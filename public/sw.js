@@ -1,9 +1,8 @@
 // Plug Wa Notes Service Worker
 // Keeps serverless routes warm on app visibility & caches shell assets
 
-const CACHE_NAME = 'plug-wa-notes-v1';
+const CACHE_NAME = 'plug-wa-notes-v2';
 const ASSETS_TO_CACHE = [
-  '/',
   '/manifest.json',
   '/icons/icon-192.svg',
   '/icons/icon-512.svg',
@@ -37,8 +36,24 @@ setInterval(() => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache API routes - always network first
-  if (url.pathname.startsWith('/api/')) {
+  // Never cache API routes or media files
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/media/')) {
+    return;
+  }
+
+  // Network first for HTML navigation requests to prevent stale layout caches
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
     return;
   }
 

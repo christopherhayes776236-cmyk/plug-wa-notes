@@ -150,9 +150,31 @@ button:active,
 
 /* ─── Full-Page (100vh) Section System ──────────────────────── */
 
-@keyframes slideContentIn {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes kineticSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.anim-stagger-1 {
+  animation: kineticSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.04s both;
+}
+
+.anim-stagger-2 {
+  animation: kineticSlideUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+}
+
+.anim-stagger-3 {
+  animation: kineticSlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.20s both;
+}
+
+.anim-stagger-4 {
+  animation: kineticSlideUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
 }
 
 .fullpage-wrapper {
@@ -168,16 +190,16 @@ button:active,
 .fullpage-track {
   height: 100%;
   width: 100%;
-  transition: transform 0.75s cubic-bezier(0.76, 0, 0.24, 1);
+  transition: transform 0.85s cubic-bezier(0.19, 1, 0.22, 1);
   will-change: transform;
 }
 
 .fullpage-slide {
   height: 100dvh;
   width: 100%;
-  max-width: 720px;
+  max-width: 680px;
   margin: 0 auto;
-  padding: 4.75rem 1.25rem 2.25rem;
+  padding: 4.5rem 1.25rem 1.75rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -185,19 +207,38 @@ button:active,
   position: relative;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  animation: slideContentIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   .fullpage-slide {
-    padding: 5.5rem 2rem 2.5rem;
+    max-width: 1180px;
+    padding: 5.25rem 2.5rem 2.25rem;
+  }
+}
+
+/* Two-column layout on desktop to eliminate empty space */
+.slide-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  flex: 1;
+  justify-content: center;
+}
+
+@media (min-width: 1024px) {
+  .slide-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 3.5rem;
+    align-items: center;
   }
 }
 
 /* Pagination indicator on right side (Desktop & Mobile) */
 .fullpage-hud {
   position: fixed;
-  right: 1rem;
+  right: 1.25rem;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -211,19 +252,19 @@ button:active,
   height: 6px;
   border-radius: 9999px;
   background-color: var(--line);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: pointer;
   border: none;
   padding: 0;
 }
 
 .fullpage-dot.active {
-  height: 22px;
+  height: 24px;
   background-color: var(--blue);
 }
 
 .fullpage-dot.active-teal {
-  height: 22px;
+  height: 24px;
   background-color: var(--teal);
 }
 
@@ -378,14 +419,19 @@ button:active,
   animation: flyInUpSoft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@keyframes blinkCursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 .typewriter-cursor {
   display: inline-block;
-  width: 2px;
-  height: 1.1em;
-  background-color: var(--blue);
-  vertical-align: middle;
+  width: 3px;
+  height: 1.15em;
+  background-color: var(--teal);
+  vertical-align: -0.15em;
   margin-left: 3px;
-  animation: blinkCursor 0.8s infinite;
+  animation: blinkCursor 0.75s infinite ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
