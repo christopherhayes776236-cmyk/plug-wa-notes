@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrder, updateOrderStatus } from '@/lib/ordersStore';
 import { queryStkStatus } from '@/lib/mpesa';
 import { getUnitByCode } from '@/lib/data';
+import { getProductDownloadUrl } from '@/lib/cloudinary';
 
 export async function GET(
   req: NextRequest,
@@ -38,9 +39,7 @@ export async function GET(
           // Success verified
           const unit = getUnitByCode(order.unitCode);
           const product = unit?.products.find((p) => p.type === order.productType);
-          const downloadUrl =
-            product?.fileUrl ||
-            `https://res.cloudinary.com/plug-wa-notes/raw/upload/fl_attachment/v1/units/${order.unitCode.toLowerCase().replace(/\s+/g, '')}/${order.productType}.pdf`;
+          const downloadUrl = getProductDownloadUrl(order.unitCode, order.productType, product?.fileUrl);
 
           await updateOrderStatus(orderId, 'paid', downloadUrl);
 
@@ -84,9 +83,7 @@ export async function GET(
     ) {
       const unit = getUnitByCode(order.unitCode);
       const product = unit?.products.find((p) => p.type === order.productType);
-      const testDownloadUrl =
-        product?.fileUrl ||
-        `https://res.cloudinary.com/plug-wa-notes/raw/upload/fl_attachment/v1/units/${order.unitCode.toLowerCase().replace(/\s+/g, '')}/${order.productType}.pdf`;
+      const testDownloadUrl = getProductDownloadUrl(order.unitCode, order.productType, product?.fileUrl);
 
       await updateOrderStatus(orderId, 'paid', testDownloadUrl);
 

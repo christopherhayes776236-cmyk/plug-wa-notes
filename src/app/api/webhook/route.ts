@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrder, getOrderByCheckoutRequestId, updateOrderStatus } from '@/lib/ordersStore';
 import { getUnitByCode } from '@/lib/data';
+import { getProductDownloadUrl } from '@/lib/cloudinary';
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,9 +33,7 @@ export async function POST(req: NextRequest) {
       if (order) {
         const unit = getUnitByCode(order.unitCode);
         const product = unit?.products.find((p) => p.type === order.productType);
-        const downloadUrl =
-          product?.fileUrl ||
-          `https://res.cloudinary.com/plug-wa-notes/raw/upload/fl_attachment/v1/units/${order.unitCode.toLowerCase().replace(/\s+/g, '')}/${order.productType}.pdf`;
+        const downloadUrl = getProductDownloadUrl(order.unitCode, order.productType, product?.fileUrl);
 
         await updateOrderStatus(order.orderId, 'paid', downloadUrl);
       }
