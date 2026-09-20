@@ -29,6 +29,16 @@ const SLIDE_TOPICS = [
   'Key Exam Concepts & CAT Summary',
 ];
 
+const MEDIA_URLS = {
+  notesVideo: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903687/plug-wa-notes/media/notes-overview.mp4',
+  videoOverview: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903689/plug-wa-notes/media/video-overview.mp4',
+  audioOverview: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903690/plug-wa-notes/media/audio-overview.m4a',
+  audioOverviewMp3: 'https://res.cloudinary.com/nd4ofxfu/raw/upload/v1789903691/plug-wa-notes/media/audio-overview-mp3.mp3',
+  localNotesVideo: '/media/notes-overview.mp4',
+  localVideoOverview: '/media/video-overview.mp4',
+  localAudio: '/media/audio-highlight.m4a',
+};
+
 /* ─── Motion variants per section ──────────────────────────────
    Notes  → text enters from bottom  (up)
    Video  → text enters from left
@@ -107,7 +117,6 @@ export default function HomePage() {
   const [audioSpeed, setAudioSpeed] = useState(1);
 
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [slideTeaserLockedNotice, setSlideTeaserLockedNotice] = useState(false);
 
   /* ─────────────────────────────────────────────────────────────
      Loader
@@ -138,24 +147,48 @@ export default function HomePage() {
   }, []);
 
   /* ─────────────────────────────────────────────────────────────
-     Preload & Cache PWA Content during 13s Loading Screen
+     Sequential Priority Preloading System
+     Stage 1 (13s Fast Loader):
+       - FULL buffer of Notes Video (top priority, 100% ready on exit)
+       - Partial Range warmup of next assets (256KB Video, 128KB Audio, Slide 1)
+     Stage 2 (Triggered on notes play / transition):
+       - Priority A: Next Video Overview full buffer
+       - Priority B: Audio Overview full buffer
+       - Priority C: Sequential preload of Slides 2–15 into CacheStorage
   ───────────────────────────────────────────────────────────── */
   const router = useRouter();
+  const hasTriggeredBgPreloadRef = useRef(false);
 
-  useEffect(() => {
-    // 1. Cache all 15 slide images in CacheStorage & browser decoded memory
-    const preloadSlides = async () => {
+  const triggerSequentialBackgroundLoad = useCallback(() => {
+    if (hasTriggeredBgPreloadRef.current) return;
+    hasTriggeredBgPreloadRef.current = true;
+
+    // Priority A: Video Overview full buffer in background
+    const nextVideo = document.createElement('video');
+    nextVideo.preload = 'auto';
+    nextVideo.muted = true;
+    nextVideo.src = MEDIA_URLS.videoOverview;
+    nextVideo.load();
+
+    // Priority B: Audio Overview (staggered slightly to optimize bandwidth)
+    setTimeout(() => {
+      const nextAudio = document.createElement('audio');
+      nextAudio.preload = 'auto';
+      nextAudio.src = MEDIA_URLS.audioOverview;
+      nextAudio.load();
+    }, 450);
+
+    // Priority C: Sequential slide deck preloading into CacheStorage
+    setTimeout(async () => {
       try {
         const cache = typeof window !== 'undefined' && 'caches' in window
           ? await caches.open('plug-wa-notes-content-v1')
           : null;
 
-        SLIDE_IMAGES.forEach((src) => {
-          // Preload into browser Image memory for instant transitions
+        for (let i = 1; i < SLIDE_IMAGES.length; i++) {
+          const src = SLIDE_IMAGES[i];
           const img = new Image();
           img.src = src;
-
-          // Preload into CacheStorage for offline PWA
           if (cache) {
             fetch(src, { cache: 'force-cache' })
               .then((res) => {
@@ -163,46 +196,47 @@ export default function HomePage() {
               })
               .catch(() => {});
           }
-        });
-      } catch (err) {
-        console.warn('Preload slides cache non-blocking:', err);
-      }
-    };
-
-    // 2. Preload video & audio into browser's media pipeline
-    //    Creating real media elements triggers the browser's
-    //    native media loader — way more effective than fetch().
-    const preloadMedia = () => {
-      const videoSources = ['/media/notes-overview.mp4', '/media/video-overview.mp4'];
-      videoSources.forEach((src) => {
-        const v = document.createElement('video');
-        v.preload = 'auto';
-        v.muted = true;
-        v.src = src;
-        v.load(); // explicitly kick off buffering
-      });
-
-      // Audio preload
-      const a = document.createElement('audio');
-      a.preload = 'auto';
-      a.src = '/media/Audio.mp4';
-      a.load();
-    };
-
-    // 3. Prefetch all unit routes for instant navigation
-    const prefetchRoutes = () => {
-      try {
-        UNITS.forEach((unit) => {
-          const slug = unit.code.toLowerCase().replace(/\s+/g, '');
-          router.prefetch(`/unit/${slug}`);
-        });
+          // Stagger requests slightly so bandwidth stays free
+          await new Promise((r) => setTimeout(r, 100));
+        }
       } catch (_) {}
-    };
+    }, 1100);
+  }, []);
 
-    preloadSlides();
-    preloadMedia();
-    prefetchRoutes();
+  useEffect(() => {
+    // 1. High Priority FULL Preload of Notes Video during 13s loader
+    const notesVideo = document.createElement('video');
+    notesVideo.preload = 'auto';
+    notesVideo.muted = true;
+    notesVideo.src = MEDIA_URLS.notesVideo;
+    notesVideo.load();
+
+    // 2. Partial section / range warmup of next assets so skipping works instantly
+    try {
+      fetch(MEDIA_URLS.videoOverview, { headers: { Range: 'bytes=0-262144' } }).catch(() => {});
+      fetch(MEDIA_URLS.audioOverview, { headers: { Range: 'bytes=0-131072' } }).catch(() => {});
+      const img1 = new Image();
+      img1.src = SLIDE_IMAGES[0];
+    } catch (_) {}
+
+    // 3. Prefetch unit routes
+    try {
+      UNITS.forEach((unit) => {
+        const slug = unit.code.toLowerCase().replace(/\s+/g, '');
+        router.prefetch(`/unit/${slug}`);
+      });
+    } catch (_) {}
   }, [router]);
+
+  // When loader completes, automatically start background sequential queue after brief delay
+  useEffect(() => {
+    if (!isLoading) {
+      const timer = setTimeout(() => {
+        triggerSequentialBackgroundLoad();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, triggerSequentialBackgroundLoad]);
 
   /* ─────────────────────────────────────────────────────────────
      Page Navigation Engine
@@ -215,7 +249,11 @@ export default function HomePage() {
     setCurrentPage(index);
     setAnimKey((k) => k + 1);
     setStagePhase('text');
-    setSlideTeaserLockedNotice(false);
+
+    // If moving to any media page, trigger background loader
+    if (index > 0) {
+      triggerSequentialBackgroundLoad();
+    }
 
     // Pause unselected media
     if (index !== 1 && notesVideoRef.current) {
@@ -234,7 +272,7 @@ export default function HomePage() {
     setTimeout(() => {
       isTransitioningRef.current = false;
     }, 650);
-  }, []);
+  }, [triggerSequentialBackgroundLoad]);
 
   const nextPage = useCallback(() => {
     if (currentPage < TOTAL_PAGES - 1) goToPage(currentPage + 1);
@@ -349,23 +387,66 @@ export default function HomePage() {
   };
 
   /* ─────────────────────────────────────────────────────────────
-     Media Handlers
+     Media Handlers (Single-Tap Direct Play + Toggle)
   ───────────────────────────────────────────────────────────── */
+  const playNotes = () => {
+    if (!notesVideoRef.current) return;
+    notesVideoRef.current.play().then(() => {
+      setIsNotesPlaying(true);
+      triggerSequentialBackgroundLoad();
+    }).catch(() => {
+      if (notesVideoRef.current) {
+        notesVideoRef.current.muted = true;
+        notesVideoRef.current.play().then(() => {
+          setIsNotesPlaying(true);
+          triggerSequentialBackgroundLoad();
+        }).catch(() => {});
+      }
+    });
+  };
+
   const toggleNotesPlay = () => {
     if (!notesVideoRef.current) return;
-    notesVideoRef.current.paused
-      ? notesVideoRef.current.play()
-      : notesVideoRef.current.pause();
+    if (notesVideoRef.current.paused) {
+      playNotes();
+    } else {
+      notesVideoRef.current.pause();
+      setIsNotesPlaying(false);
+    }
+  };
+
+  const playVideo = () => {
+    if (!videoRef.current) return;
+    videoRef.current.play().then(() => {
+      setIsVideoPlaying(true);
+    }).catch(() => {});
   };
 
   const toggleVideoPlay = () => {
     if (!videoRef.current) return;
-    videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause();
+    if (videoRef.current.paused) {
+      playVideo();
+    } else {
+      videoRef.current.pause();
+      setIsVideoPlaying(false);
+    }
+  };
+
+  const playAudio = () => {
+    if (!audioRef.current) return;
+    audioRef.current.play().then(() => {
+      setIsAudioPlaying(true);
+    }).catch(() => {});
   };
 
   const toggleAudioPlay = () => {
     if (!audioRef.current) return;
-    audioRef.current.paused ? audioRef.current.play() : audioRef.current.pause();
+    if (audioRef.current.paused) {
+      playAudio();
+    } else {
+      audioRef.current.pause();
+      setIsAudioPlaying(false);
+    }
   };
 
   const changeAudioSpeed = (speed: number) => {
@@ -634,26 +715,45 @@ export default function HomePage() {
                     <div
                       className="dominant-player-box dominant-player-light"
                       onClick={toggleNotesPlay}
-                      style={{ aspectRatio: '16/10', maxHeight: '62vh', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      style={{ aspectRatio: '16/10', maxHeight: '62vh', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}
                     >
                       <video
                         ref={notesVideoRef}
-                        src="/media/notes-overview.mp4"
+                        src={MEDIA_URLS.notesVideo}
                         preload="auto"
                         loop
                         muted
                         playsInline
-                        onPlay={() => setIsNotesPlaying(true)}
+                        onPlay={() => {
+                          setIsNotesPlaying(true);
+                          triggerSequentialBackgroundLoad();
+                        }}
+                        onPlaying={() => setIsNotesPlaying(true)}
                         onPause={() => setIsNotesPlaying(false)}
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (el.src !== window.location.origin + MEDIA_URLS.localNotesVideo) {
+                            el.src = MEDIA_URLS.localNotesVideo;
+                            el.load();
+                          }
+                        }}
                         onEnded={nextPage}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                       {!isNotesPlaying && (
-                        <div style={{
-                          position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)',
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                        }}>
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            playNotes();
+                          }}
+                          style={{
+                            position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                            cursor: 'pointer', zIndex: 10,
+                          }}
+                        >
                           <div style={{
+                            pointerEvents: 'none',
                             width: '3.5rem', height: '3.5rem', borderRadius: '50%', backgroundColor: '#1E40AF',
                             color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: '1.35rem', paddingLeft: '3px', boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
@@ -721,30 +821,48 @@ export default function HomePage() {
                     >
                       <video
                         ref={videoRef}
-                        src="/media/video-overview.mp4"
+                        src={MEDIA_URLS.videoOverview}
                         preload="auto"
                         playsInline
                         muted={videoMuted}
                         onPlay={() => setIsVideoPlaying(true)}
+                        onPlaying={() => setIsVideoPlaying(true)}
                         onPause={() => setIsVideoPlaying(false)}
                         onLoadedMetadata={(e) => {
                           setVideoDuration(e.currentTarget.duration);
                         }}
-                        onEnded={nextPage}
                         onTimeUpdate={() => {
                           if (!videoRef.current) return;
                           setVideoTime(videoRef.current.currentTime);
+                          if (!videoDuration && videoRef.current.duration) {
+                            setVideoDuration(videoRef.current.duration);
+                          }
                         }}
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (el.src !== window.location.origin + MEDIA_URLS.localVideoOverview) {
+                            el.src = MEDIA_URLS.localVideoOverview;
+                            el.load();
+                          }
+                        }}
+                        onEnded={nextPage}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
 
                       {!isVideoPlaying && (
-                        <div style={{
-                          position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)',
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                          pointerEvents: 'none',
-                        }}>
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            playVideo();
+                          }}
+                          style={{
+                            position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                            cursor: 'pointer', zIndex: 10,
+                          }}
+                        >
                           <div style={{
+                            pointerEvents: 'none',
                             width: '3.5rem', height: '3.5rem', borderRadius: '50%', backgroundColor: '#0D9488',
                             color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: '1.35rem', paddingLeft: '3px', boxShadow: '0 6px 18px rgba(0,0,0,0.3)',
@@ -848,15 +966,28 @@ export default function HomePage() {
 
                       <audio
                         ref={audioRef}
-                        src="/media/Audio.mp4"
+                        src={MEDIA_URLS.audioOverview}
                         preload="auto"
                         onPlay={() => setIsAudioPlaying(true)}
+                        onPlaying={() => setIsAudioPlaying(true)}
                         onPause={() => setIsAudioPlaying(false)}
                         onEnded={nextPage}
+                        onLoadedMetadata={(e) => {
+                          setAudioDuration(e.currentTarget.duration || 20);
+                        }}
                         onTimeUpdate={() => {
                           if (audioRef.current) {
                             setAudioTime(audioRef.current.currentTime);
-                            setAudioDuration(audioRef.current.duration || 20);
+                            if (audioRef.current.duration && (!audioDuration || audioDuration === 20)) {
+                              setAudioDuration(audioRef.current.duration);
+                            }
+                          }
+                        }}
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (el.src !== window.location.origin + MEDIA_URLS.localAudio) {
+                            el.src = MEDIA_URLS.localAudio;
+                            el.load();
                           }
                         }}
                       />
@@ -922,7 +1053,7 @@ export default function HomePage() {
           </section>
 
           {/* ═══════════════════════════════════════════════════════
-              PAGE 5 – Slides (3-Slide Teaser, manual advance)
+              PAGE 5 – Slides (All 15 Slides Unlocked)
           ═══════════════════════════════════════════════════════ */}
           <section className="fullpage-slide" key={`slide-4-${animKey}`}>
             <div className="choreography-stage">
@@ -945,7 +1076,7 @@ export default function HomePage() {
                 ) : (
                   <MediaPhase key="slides-media">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span className="teaser-pill teaser-pill-teal">Slide {currentSlide + 1} of 3 — Teaser Preview</span>
+                      <span className="teaser-pill teaser-pill-teal">Slide {currentSlide + 1} of {SLIDE_IMAGES.length}</span>
                       <button onClick={() => setStagePhase('text')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer' }}>
                         ← back
                       </button>
@@ -962,82 +1093,48 @@ export default function HomePage() {
                       />
 
                       <button
-                        onClick={() => { setSlideTeaserLockedNotice(false); setCurrentSlide((prev) => (prev > 0 ? prev - 1 : 0)); }}
+                        onClick={() => setCurrentSlide((prev) => (prev > 0 ? prev - 1 : SLIDE_IMAGES.length - 1))}
                         aria-label="Previous slide"
-                        disabled={currentSlide === 0}
                         style={{
                           position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)',
                           width: '2.5rem', height: '2.5rem', backgroundColor: 'rgba(255,255,255,0.92)',
-                          border: '1px solid #E2E8F0', color: currentSlide === 0 ? '#CBD5E1' : '#0F172A',
-                          cursor: currentSlide === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          border: '1px solid #E2E8F0', color: '#0F172A',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', zIndex: 10,
                         }}
                       >‹</button>
 
                       <button
-                        onClick={() => { currentSlide < 2 ? setCurrentSlide(currentSlide + 1) : setSlideTeaserLockedNotice(true); setSlideTeaserLockedNotice(currentSlide >= 2); }}
+                        onClick={() => setCurrentSlide((prev) => (prev < SLIDE_IMAGES.length - 1 ? prev + 1 : 0))}
                         aria-label="Next slide"
                         style={{
                           position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)',
                           width: '2.5rem', height: '2.5rem', backgroundColor: 'rgba(255,255,255,0.92)',
                           border: '1px solid #E2E8F0', color: '#0F172A', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          fontSize: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', zIndex: 10,
                         }}
                       >›</button>
-
-                      {slideTeaserLockedNotice && (
-                        <div className="teaser-locked-overlay">
-                          <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>🔒</div>
-                          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF' }}>Slides 4–15 locked</div>
-                          <p style={{ fontSize: '0.8125rem', color: '#94A3B8', marginTop: '0.35rem', maxWidth: '300px' }}>
-                            The rest of the slide deck is unlocked inside the full unit pack.
-                          </p>
-                          <button
-                            onClick={() => goToPage(5)}
-                            style={{ marginTop: '1rem', padding: '0.5rem 1.25rem', backgroundColor: '#0D9488', border: 'none', color: '#FFFFFF', fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer' }}
-                          >
-                            Unlock Full Deck →
-                          </button>
-                        </div>
-                      )}
                     </div>
 
-                    {/* Thumbnails */}
-                    <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', marginTop: '0.75rem', paddingBottom: '0.25rem', alignItems: 'center' }}>
-                      {[0, 1, 2].map((i) => (
+                    {/* Unlocked 15-Slide Thumbnails Strip */}
+                    <div style={{ display: 'flex', gap: '0.45rem', overflowX: 'auto', marginTop: '0.75rem', paddingBottom: '0.35rem', alignItems: 'center' }}>
+                      {SLIDE_IMAGES.map((src, i) => (
                         <button
                           key={i}
-                          onClick={() => { setCurrentSlide(i); setSlideTeaserLockedNotice(false); }}
+                          onClick={() => setCurrentSlide(i)}
+                          title={`Slide ${i + 1}: ${SLIDE_TOPICS[i]}`}
                           style={{
-                            width: '3.25rem', height: '2rem', flexShrink: 0,
+                            width: '3.25rem', height: '2.1rem', flexShrink: 0,
                             border: currentSlide === i ? '2px solid #0D9488' : '1px solid #E2E8F0',
                             overflow: 'hidden', padding: 0, cursor: 'pointer', background: '#F1F5F9',
+                            opacity: currentSlide === i ? 1 : 0.72,
+                            borderRadius: '2px', transition: 'opacity 0.15s ease, border-color 0.15s ease',
                           }}
                         >
-                          <img src={SLIDE_IMAGES[i]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={src} alt={`Thumbnail ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </button>
                       ))}
-                      {[3, 4, 5].map((i) => (
-                        <div
-                          key={i}
-                          onClick={() => setSlideTeaserLockedNotice(true)}
-                          style={{
-                            width: '3.25rem', height: '2rem', flexShrink: 0, border: '1px solid #E2E8F0',
-                            overflow: 'hidden', cursor: 'pointer', background: '#F1F5F9',
-                            position: 'relative', filter: 'grayscale(1) blur(1.5px)', opacity: 0.6,
-                          }}
-                        >
-                          <img src={SLIDE_IMAGES[i]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.625rem', color: '#0F172A' }}>🔒</div>
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => setSlideTeaserLockedNotice(true)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.6875rem', color: '#0D9488', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, paddingLeft: '0.25rem' }}
-                      >
-                        +12 more 🔒
-                      </button>
                     </div>
                   </MediaPhase>
                 )}
