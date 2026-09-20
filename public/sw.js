@@ -36,8 +36,8 @@ setInterval(() => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache API routes or media files
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/media/')) {
+  // Never cache API routes or large streaming video/audio files directly in SW fetch
+  if (url.pathname.startsWith('/api/') || (url.pathname.startsWith('/media/') && !url.pathname.startsWith('/media/slides/'))) {
     return;
   }
 

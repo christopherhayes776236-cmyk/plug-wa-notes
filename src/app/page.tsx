@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion, TargetAndTransition } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { UNITS } from '@/lib/data';
 
 const TOTAL_PAGES = 6;
@@ -96,8 +97,8 @@ export default function HomePage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [videoTime, setVideoTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
   const [videoMuted, setVideoMuted] = useState(false);
-  const [videoTeaserLocked, setVideoTeaserLocked] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -135,6 +136,61 @@ export default function HomePage() {
       clearTimeout(safetyCap);
     };
   }, []);
+
+  /* ─────────────────────────────────────────────────────────────
+     Preload & Cache PWA Content during 13s Loading Screen
+  ───────────────────────────────────────────────────────────── */
+  const router = useRouter();
+
+  useEffect(() => {
+    // 1. Cache all 15 slide images in CacheStorage & browser memory
+    const preloadSlides = async () => {
+      try {
+        const cache = typeof window !== 'undefined' && 'caches' in window
+          ? await caches.open('plug-wa-notes-content-v1')
+          : null;
+
+        SLIDE_IMAGES.forEach((src) => {
+          // Preload into browser Image memory for instant transitions
+          const img = new Image();
+          img.src = src;
+
+          // Preload into CacheStorage for offline PWA instant loads
+          if (cache) {
+            fetch(src, { cache: 'force-cache' })
+              .then((res) => {
+                if (res && res.status === 200) cache.put(src, res);
+              })
+              .catch(() => {});
+          }
+        });
+      } catch (err) {
+        console.warn('Preload slides cache non-blocking warning:', err);
+      }
+    };
+
+    // 2. Warm up video media buffers
+    const preloadMedia = () => {
+      const mediaUrls = ['/media/video-overview.mp4', '/media/notes-overview.mp4'];
+      mediaUrls.forEach((url) => {
+        fetch(url, { headers: { Range: 'bytes=0-2097152' } }).catch(() => {});
+      });
+    };
+
+    // 3. Prefetch all unit routes for instant navigation
+    const prefetchRoutes = () => {
+      try {
+        UNITS.forEach((unit) => {
+          const slug = unit.code.toLowerCase().replace(/\s+/g, '');
+          router.prefetch(`/unit/${slug}`);
+        });
+      } catch (_) {}
+    };
+
+    preloadSlides();
+    preloadMedia();
+    prefetchRoutes();
+  }, [router]);
 
   /* ─────────────────────────────────────────────────────────────
      Page Navigation Engine
@@ -223,10 +279,9 @@ export default function HomePage() {
       notesVideoRef.current.play().catch(() => {});
     }
 
-    // Video: auto-play 8s teaser
+    // Video: auto-play video overview
     if (currentPage === 2 && videoRef.current) {
       videoRef.current.currentTime = 0;
-      setVideoTeaserLocked(false);
       videoRef.current.play().catch(() => {});
     }
 
@@ -293,12 +348,6 @@ export default function HomePage() {
 
   const toggleVideoPlay = () => {
     if (!videoRef.current) return;
-    if (videoTeaserLocked) {
-      videoRef.current.currentTime = 0;
-      setVideoTeaserLocked(false);
-      videoRef.current.play();
-      return;
-    }
     videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause();
   };
 
@@ -621,7 +670,7 @@ export default function HomePage() {
           </section>
 
           {/* ═══════════════════════════════════════════════════════
-              PAGE 3 – Video Review (8s Teaser Cap)
+              PAGE 3 – Video Review (Full Video Player)
           ═══════════════════════════════════════════════════════ */}
           <section className="fullpage-slide" key={`slide-2-${animKey}`}>
             <div className="choreography-stage">
@@ -638,13 +687,15 @@ export default function HomePage() {
                       onClick={() => setStagePhase('media')}
                       style={{ marginTop: '1.25rem', background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
                     >
-                      Skip to preview →
+                      Skip to video →
                     </button>
                   </TextPhase>
                 ) : (
                   <MediaPhase key="video-media">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span className="teaser-pill teaser-pill-teal">8-Second Teaser Preview</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0D9488', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                        Video Overview
+                      </span>
                       <button onClick={() => setStagePhase('text')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer' }}>
                         ← back
                       </button>
@@ -653,7 +704,7 @@ export default function HomePage() {
                     <div
                       className="dominant-player-box"
                       onClick={toggleVideoPlay}
-                      style={{ aspectRatio: '16/9', maxHeight: '62vh', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      style={{ aspectRatio: '16/9', maxHeight: '62vh', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}
                     >
                       <video
                         ref={videoRef}
@@ -662,24 +713,22 @@ export default function HomePage() {
                         muted={videoMuted}
                         onPlay={() => setIsVideoPlaying(true)}
                         onPause={() => setIsVideoPlaying(false)}
+                        onLoadedMetadata={(e) => {
+                          setVideoDuration(e.currentTarget.duration);
+                        }}
                         onEnded={nextPage}
                         onTimeUpdate={() => {
                           if (!videoRef.current) return;
-                          const cur = videoRef.current.currentTime;
-                          setVideoTime(cur);
-                          if (cur >= 8) {
-                            videoRef.current.pause();
-                            setIsVideoPlaying(false);
-                            setVideoTeaserLocked(true);
-                          }
+                          setVideoTime(videoRef.current.currentTime);
                         }}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
 
-                      {!isVideoPlaying && !videoTeaserLocked && (
+                      {!isVideoPlaying && (
                         <div style={{
-                          position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                          position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)',
                           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                          pointerEvents: 'none',
                         }}>
                           <div style={{
                             width: '3.5rem', height: '3.5rem', borderRadius: '50%', backgroundColor: '#0D9488',
@@ -688,45 +737,26 @@ export default function HomePage() {
                           }}>▶</div>
                         </div>
                       )}
-
-                      {videoTeaserLocked && (
-                        <div className="teaser-locked-overlay">
-                          <div style={{ width: '3rem', height: '3rem', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', marginBottom: '0.75rem', color: '#99F6E4' }}>🔒</div>
-                          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF' }}>Teaser preview complete</div>
-                          <p style={{ fontSize: '0.8125rem', color: '#94A3B8', marginTop: '0.35rem', maxWidth: '320px' }}>
-                            Buy to watch the rest of the explainer video
-                          </p>
-                          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (videoRef.current) {
-                                  videoRef.current.currentTime = 0;
-                                  setVideoTeaserLocked(false);
-                                  videoRef.current.play();
-                                }
-                              }}
-                              style={{ padding: '0.45rem 0.9rem', backgroundColor: 'transparent', border: '1px solid #64748B', color: '#F8FAFC', fontSize: '0.75rem', cursor: 'pointer' }}
-                            >
-                              ↺ Replay
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); goToPage(5); }}
-                              style={{ padding: '0.45rem 1rem', backgroundColor: '#0D9488', border: 'none', color: '#FFFFFF', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}
-                            >
-                              Unlock →
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     <div style={{ marginTop: '0.75rem' }}>
-                      <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(15,23,42,0.12)', position: 'relative' }}>
-                        <div style={{ height: '100%', width: `${Math.min((videoTime / 8) * 100, 100)}%`, backgroundColor: '#0D9488' }} />
+                      {/* Clickable Seekable Progress Bar */}
+                      <div
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const clickX = e.clientX - rect.left;
+                          const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+                          if (videoRef.current && videoDuration) {
+                            videoRef.current.currentTime = ratio * videoDuration;
+                            setVideoTime(ratio * videoDuration);
+                          }
+                        }}
+                        style={{ width: '100%', height: '7px', backgroundColor: 'rgba(15,23,42,0.12)', position: 'relative', cursor: 'pointer', borderRadius: '4px', overflow: 'hidden' }}
+                      >
+                        <div style={{ height: '100%', width: `${videoDuration ? Math.min((videoTime / videoDuration) * 100, 100) : 0}%`, backgroundColor: '#0D9488', transition: 'width 0.1s linear' }} />
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', fontFamily: 'monospace', color: '#64748B', marginTop: '0.35rem' }}>
-                        <span>{formatSeconds(videoTime)} / 00:08</span>
+                        <span>{formatSeconds(videoTime)} / {formatSeconds(videoDuration || 0)}</span>
                         <button onClick={() => setVideoMuted(!videoMuted)} style={{ background: 'none', border: 'none', color: '#0D9488', cursor: 'pointer', fontWeight: 500 }}>
                           {videoMuted ? '🔇' : '🔊'}
                         </button>
