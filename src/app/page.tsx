@@ -319,28 +319,65 @@ export default function HomePage() {
 
   /* ─────────────────────────────────────────────────────────────
      Auto-play media when phase switches to 'media'
+     Uses a 300ms delay so AnimatePresence finishes mounting
+     the DOM elements before we try to call .play()
   ───────────────────────────────────────────────────────────── */
   useEffect(() => {
     if (stagePhase !== 'media') return;
 
-    // Notes: auto-play looping scroll video
-    if (currentPage === 1 && notesVideoRef.current) {
-      notesVideoRef.current.currentTime = 0;
-      notesVideoRef.current.play().catch(() => {});
-    }
+    const timer = setTimeout(() => {
+      // Notes: auto-play looping scroll video (muted, always works)
+      if (currentPage === 1 && notesVideoRef.current) {
+        notesVideoRef.current.play().catch(() => {});
+      }
 
-    // Video: auto-play video overview
-    if (currentPage === 2 && videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.play().catch(() => {});
-    }
+      // Video: auto-play video overview (starts muted so autoplay allowed)
+      if (currentPage === 2 && videoRef.current) {
+        videoRef.current.play()
+          .then(() => setIsVideoPlaying(true))
+          .catch(() => {
+            // Ensure muted fallback
+            if (videoRef.current) {
+              videoRef.current.muted = true;
+              setVideoMuted(true);
+              videoRef.current.play()
+                .then(() => setIsVideoPlaying(true))
+                .catch(() => {});
+            }
+          });
+      }
 
-    // Audio: auto-play highlight
-    if (currentPage === 3 && audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
-    }
+      // Audio: auto-play highlight
+      if (currentPage === 3 && audioRef.current) {
+        audioRef.current.play()
+          .then(() => setIsAudioPlaying(true))
+          .catch(() => {});
+      }
+    }, 300); // wait for AnimatePresence to mount elements
+
+    return () => clearTimeout(timer);
   }, [stagePhase, currentPage]);
+
+  /* ─────────────────────────────────────────────────────────────
+     Stop media when navigating away from its page
+  ───────────────────────────────────────────────────────────── */
+  useEffect(() => {
+    // Pause video overview when not on page 2
+    if (currentPage !== 2 && videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+      setIsVideoPlaying(false);
+    }
+    // Pause audio when not on page 3
+    if (currentPage !== 3 && audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+      setIsAudioPlaying(false);
+    }
+    // Pause notes video when not on page 1
+    if (currentPage !== 1 && notesVideoRef.current && !notesVideoRef.current.paused) {
+      notesVideoRef.current.pause();
+      setIsNotesPlaying(false);
+    }
+  }, [currentPage]);
 
   /* ─────────────────────────────────────────────────────────────
      Desktop Wheel & Keyboard Handlers
@@ -843,14 +880,6 @@ export default function HomePage() {
                         preload="auto"
                         playsInline
                         muted={videoMuted}
-                        onCanPlay={() => {
-                          // Fires when element is mounted & ready — safer than useEffect timing
-                          if (videoRef.current && videoRef.current.paused) {
-                            videoRef.current.play()
-                              .then(() => setIsVideoPlaying(true))
-                              .catch(() => {});
-                          }
-                        }}
                         onPlay={() => setIsVideoPlaying(true)}
                         onPlaying={() => setIsVideoPlaying(true)}
                         onPause={() => setIsVideoPlaying(false)}
@@ -1014,23 +1043,6 @@ export default function HomePage() {
                       <audio
                         ref={audioRef}
                         preload="auto"
-                        onCanPlay={() => {
-                          // Fires when element is mounted & ready — safer than useEffect timing
-                          if (audioRef.current && audioRef.current.paused) {
-                            audioRef.current.play()
-                              .then(() => setIsAudioPlaying(true))
-                              .catch(() => {
-                                // mp3 fallback if m4a rejected
-                                if (audioRef.current && !audioRef.current.currentSrc.includes('mp3')) {
-                                  audioRef.current.src = MEDIA_URLS.audioOverviewMp3;
-                                  audioRef.current.load();
-                                  audioRef.current.play()
-                                    .then(() => setIsAudioPlaying(true))
-                                    .catch(() => {});
-                                }
-                              });
-                          }
-                        }}
                         onPlay={() => setIsAudioPlaying(true)}
                         onPlaying={() => setIsAudioPlaying(true)}
                         onPause={() => setIsAudioPlaying(false)}
