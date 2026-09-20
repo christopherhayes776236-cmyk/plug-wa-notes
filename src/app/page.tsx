@@ -108,7 +108,7 @@ export default function HomePage() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [videoTime, setVideoTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
-  const [videoMuted, setVideoMuted] = useState(false);
+  const [videoMuted, setVideoMuted] = useState(true); // start muted so autoplay is allowed by browser
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -417,9 +417,18 @@ export default function HomePage() {
 
   const playVideo = () => {
     if (!videoRef.current) return;
-    videoRef.current.play().then(() => {
-      setIsVideoPlaying(true);
-    }).catch(() => {});
+    videoRef.current.play()
+      .then(() => setIsVideoPlaying(true))
+      .catch(() => {
+        // Autoplay blocked — retry muted (browser policy)
+        if (videoRef.current) {
+          videoRef.current.muted = true;
+          setVideoMuted(true);
+          videoRef.current.play()
+            .then(() => setIsVideoPlaying(true))
+            .catch(() => {});
+        }
+      });
   };
 
   const toggleVideoPlay = () => {
@@ -434,9 +443,18 @@ export default function HomePage() {
 
   const playAudio = () => {
     if (!audioRef.current) return;
-    audioRef.current.play().then(() => {
-      setIsAudioPlaying(true);
-    }).catch(() => {});
+    audioRef.current.play()
+      .then(() => setIsAudioPlaying(true))
+      .catch(() => {
+        // m4a may be rejected on some browsers — try mp3 fallback
+        if (audioRef.current && !audioRef.current.currentSrc.includes('mp3')) {
+          audioRef.current.src = MEDIA_URLS.audioOverviewMp3;
+          audioRef.current.load();
+          audioRef.current.play()
+            .then(() => setIsAudioPlaying(true))
+            .catch(() => {});
+        }
+      });
   };
 
   const toggleAudioPlay = () => {
@@ -825,6 +843,14 @@ export default function HomePage() {
                         preload="auto"
                         playsInline
                         muted={videoMuted}
+                        onCanPlay={() => {
+                          // Fires when element is mounted & ready — safer than useEffect timing
+                          if (videoRef.current && videoRef.current.paused) {
+                            videoRef.current.play()
+                              .then(() => setIsVideoPlaying(true))
+                              .catch(() => {});
+                          }
+                        }}
                         onPlay={() => setIsVideoPlaying(true)}
                         onPlaying={() => setIsVideoPlaying(true)}
                         onPause={() => setIsVideoPlaying(false)}
@@ -848,6 +874,27 @@ export default function HomePage() {
                         onEnded={nextPage}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
+
+                      {/* Tap-to-unmute badge — shows when video is muted and playing */}
+                      {isVideoPlaying && videoMuted && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (videoRef.current) videoRef.current.muted = false;
+                            setVideoMuted(false);
+                          }}
+                          style={{
+                            position: 'absolute', bottom: '0.75rem', right: '0.75rem',
+                            backgroundColor: 'rgba(15,23,42,0.72)', color: '#FFFFFF',
+                            fontSize: '0.7rem', fontWeight: 600, padding: '0.3rem 0.6rem',
+                            borderRadius: '999px', cursor: 'pointer', zIndex: 11,
+                            display: 'flex', alignItems: 'center', gap: '0.3rem',
+                            letterSpacing: '0.01em',
+                          }}
+                        >
+                          🔇 Tap to unmute
+                        </div>
+                      )}
 
                       {!isVideoPlaying && (
                         <div
@@ -966,8 +1013,24 @@ export default function HomePage() {
 
                       <audio
                         ref={audioRef}
-                        src={MEDIA_URLS.audioOverview}
                         preload="auto"
+                        onCanPlay={() => {
+                          // Fires when element is mounted & ready — safer than useEffect timing
+                          if (audioRef.current && audioRef.current.paused) {
+                            audioRef.current.play()
+                              .then(() => setIsAudioPlaying(true))
+                              .catch(() => {
+                                // mp3 fallback if m4a rejected
+                                if (audioRef.current && !audioRef.current.currentSrc.includes('mp3')) {
+                                  audioRef.current.src = MEDIA_URLS.audioOverviewMp3;
+                                  audioRef.current.load();
+                                  audioRef.current.play()
+                                    .then(() => setIsAudioPlaying(true))
+                                    .catch(() => {});
+                                }
+                              });
+                          }
+                        }}
                         onPlay={() => setIsAudioPlaying(true)}
                         onPlaying={() => setIsAudioPlaying(true)}
                         onPause={() => setIsAudioPlaying(false)}
@@ -984,13 +1047,21 @@ export default function HomePage() {
                           }
                         }}
                         onError={(e) => {
-                          const el = e.currentTarget;
-                          if (el.src !== window.location.origin + MEDIA_URLS.localAudio) {
+                          const el = e.currentTarget as HTMLAudioElement;
+                          // Try mp3 fallback first, then local file
+                          if (!el.currentSrc.includes('mp3') && !el.currentSrc.includes('audio-highlight')) {
+                            el.src = MEDIA_URLS.audioOverviewMp3;
+                            el.load();
+                          } else if (!el.currentSrc.includes('audio-highlight')) {
                             el.src = MEDIA_URLS.localAudio;
                             el.load();
                           }
                         }}
-                      />
+                      >
+                        {/* MP3 first for broadest browser support, m4a as fallback */}
+                        <source src={MEDIA_URLS.audioOverviewMp3} type="audio/mpeg" />
+                        <source src={MEDIA_URLS.audioOverview} type="audio/mp4" />
+                      </audio>
 
                       {/* Equalizer Bars */}
                       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '0.4rem', height: '5rem', padding: '0.5rem 0' }}>
