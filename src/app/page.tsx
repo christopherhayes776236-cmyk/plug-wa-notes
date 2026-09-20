@@ -143,7 +143,7 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // 1. Cache all 15 slide images in CacheStorage & browser memory
+    // 1. Cache all 15 slide images in CacheStorage & browser decoded memory
     const preloadSlides = async () => {
       try {
         const cache = typeof window !== 'undefined' && 'caches' in window
@@ -155,7 +155,7 @@ export default function HomePage() {
           const img = new Image();
           img.src = src;
 
-          // Preload into CacheStorage for offline PWA instant loads
+          // Preload into CacheStorage for offline PWA
           if (cache) {
             fetch(src, { cache: 'force-cache' })
               .then((res) => {
@@ -165,16 +165,28 @@ export default function HomePage() {
           }
         });
       } catch (err) {
-        console.warn('Preload slides cache non-blocking warning:', err);
+        console.warn('Preload slides cache non-blocking:', err);
       }
     };
 
-    // 2. Warm up video media buffers
+    // 2. Preload video & audio into browser's media pipeline
+    //    Creating real media elements triggers the browser's
+    //    native media loader — way more effective than fetch().
     const preloadMedia = () => {
-      const mediaUrls = ['/media/video-overview.mp4', '/media/notes-overview.mp4'];
-      mediaUrls.forEach((url) => {
-        fetch(url, { headers: { Range: 'bytes=0-2097152' } }).catch(() => {});
+      const videoSources = ['/media/notes-overview.mp4', '/media/video-overview.mp4'];
+      videoSources.forEach((src) => {
+        const v = document.createElement('video');
+        v.preload = 'auto';
+        v.muted = true;
+        v.src = src;
+        v.load(); // explicitly kick off buffering
       });
+
+      // Audio preload
+      const a = document.createElement('audio');
+      a.preload = 'auto';
+      a.src = '/media/Audio.mp4';
+      a.load();
     };
 
     // 3. Prefetch all unit routes for instant navigation
@@ -627,6 +639,7 @@ export default function HomePage() {
                       <video
                         ref={notesVideoRef}
                         src="/media/notes-overview.mp4"
+                        preload="auto"
                         loop
                         muted
                         playsInline
@@ -709,6 +722,7 @@ export default function HomePage() {
                       <video
                         ref={videoRef}
                         src="/media/video-overview.mp4"
+                        preload="auto"
                         playsInline
                         muted={videoMuted}
                         onPlay={() => setIsVideoPlaying(true)}
@@ -835,7 +849,7 @@ export default function HomePage() {
                       <audio
                         ref={audioRef}
                         src="/media/Audio.mp4"
-                        preload="metadata"
+                        preload="auto"
                         onPlay={() => setIsAudioPlaying(true)}
                         onPause={() => setIsAudioPlaying(false)}
                         onEnded={nextPage}

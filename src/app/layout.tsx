@@ -44,6 +44,13 @@ export default function RootLayout({
           as="image"
           href="https://res.cloudinary.com/nd4ofxfu/image/upload/v1789866745/plug-wa-notes/kid-study.gif"
         />
+        {/* Preload critical media files so they buffer during the 13s loader */}
+        <link rel="preload" as="video" href="/media/notes-overview.mp4" />
+        <link rel="preload" as="video" href="/media/video-overview.mp4" />
+        <link rel="preload" as="video" href="/media/Audio.mp4" />
+        <link rel="preload" as="image" href="/media/slides/image1.png" />
+        <link rel="preload" as="image" href="/media/slides/image2.png" />
+        <link rel="preload" as="image" href="/media/slides/image3.png" />
       </head>
       <body className="min-h-full flex flex-col bg-[#F6F4EF] text-[#23211E]">
         {children}
