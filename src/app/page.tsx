@@ -34,10 +34,7 @@ const MEDIA_URLS = {
   videoOverview: '/media/video-overview.mp4',
   audioOverview: '/media/audio-highlight.mp3',
   audioOverviewM4a: '/media/audio-highlight.m4a',
-  fallbackNotesVideo: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903687/plug-wa-notes/media/notes-overview.mp4',
-  fallbackVideoOverview: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903689/plug-wa-notes/media/video-overview.mp4',
-  fallbackAudio: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903690/plug-wa-notes/media/audio-overview.m4a',
-  fallbackAudioMp3: 'https://res.cloudinary.com/nd4ofxfu/raw/upload/v1789903691/plug-wa-notes/media/audio-overview-mp3.mp3',
+  audioMp4: '/media/Audio.mp4',
 };
 
 /* ─── Motion variants per section ──────────────────────────────
@@ -212,10 +209,8 @@ export default function HomePage() {
     notesVideo.src = MEDIA_URLS.notesVideo;
     notesVideo.load();
 
-    // 2. Partial section / range warmup of next assets so skipping works instantly
+    // 2. Preload Slide 1 so first slide preview is instant
     try {
-      fetch(MEDIA_URLS.videoOverview, { headers: { Range: 'bytes=0-262144' } }).catch(() => {});
-      fetch(MEDIA_URLS.audioOverview, { headers: { Range: 'bytes=0-131072' } }).catch(() => {});
       const img1 = new Image();
       img1.src = SLIDE_IMAGES[0];
     } catch (_) {}
@@ -785,11 +780,9 @@ export default function HomePage() {
                         }}
                         onPlaying={() => setIsNotesPlaying(true)}
                         onPause={() => setIsNotesPlaying(false)}
-                        onError={(e) => {
-                          const el = e.currentTarget;
-                          if (!el.src.includes('cloudinary')) {
-                            el.src = MEDIA_URLS.fallbackNotesVideo;
-                            el.load();
+                        onError={() => {
+                          if (notesVideoRef.current && notesVideoRef.current.paused) {
+                            notesVideoRef.current.load();
                           }
                         }}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -892,11 +885,9 @@ export default function HomePage() {
                             setVideoDuration(videoRef.current.duration);
                           }
                         }}
-                        onError={(e) => {
-                          const el = e.currentTarget;
-                          if (!el.src.includes('cloudinary')) {
-                            el.src = MEDIA_URLS.fallbackVideoOverview;
-                            el.load();
+                        onError={() => {
+                          if (videoRef.current && videoRef.current.paused) {
+                            videoRef.current.load();
                           }
                         }}
                         onEnded={() => {
@@ -1069,8 +1060,8 @@ export default function HomePage() {
                           if (el.src.endsWith('.mp3')) {
                             el.src = MEDIA_URLS.audioOverviewM4a;
                             el.load();
-                          } else if (!el.src.includes('cloudinary')) {
-                            el.src = MEDIA_URLS.fallbackAudioMp3;
+                          } else if (el.src.endsWith('.m4a')) {
+                            el.src = MEDIA_URLS.audioMp4;
                             el.load();
                           }
                         }}
