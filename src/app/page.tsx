@@ -30,13 +30,14 @@ const SLIDE_TOPICS = [
 ];
 
 const MEDIA_URLS = {
-  notesVideo: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903687/plug-wa-notes/media/notes-overview.mp4',
-  videoOverview: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903689/plug-wa-notes/media/video-overview.mp4',
-  audioOverview: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903690/plug-wa-notes/media/audio-overview.m4a',
-  audioOverviewMp3: 'https://res.cloudinary.com/nd4ofxfu/raw/upload/v1789903691/plug-wa-notes/media/audio-overview-mp3.mp3',
-  localNotesVideo: '/media/notes-overview.mp4',
-  localVideoOverview: '/media/video-overview.mp4',
-  localAudio: '/media/audio-highlight.m4a',
+  notesVideo: '/media/notes-overview.mp4',
+  videoOverview: '/media/video-overview.mp4',
+  audioOverview: '/media/audio-highlight.mp3',
+  audioOverviewM4a: '/media/audio-highlight.m4a',
+  fallbackNotesVideo: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903687/plug-wa-notes/media/notes-overview.mp4',
+  fallbackVideoOverview: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903689/plug-wa-notes/media/video-overview.mp4',
+  fallbackAudio: 'https://res.cloudinary.com/nd4ofxfu/video/upload/v1789903690/plug-wa-notes/media/audio-overview.m4a',
+  fallbackAudioMp3: 'https://res.cloudinary.com/nd4ofxfu/raw/upload/v1789903691/plug-wa-notes/media/audio-overview-mp3.mp3',
 };
 
 /* ─── Motion variants per section ──────────────────────────────
@@ -331,27 +332,22 @@ export default function HomePage() {
         notesVideoRef.current.play().catch(() => {});
       }
 
-      // Video: auto-play video overview (starts muted so autoplay allowed)
+      // Video: auto-play video overview (starts muted so autoplay allowed by browser)
       if (currentPage === 2 && videoRef.current) {
+        videoRef.current.muted = true;
+        setVideoMuted(true);
         videoRef.current.play()
           .then(() => setIsVideoPlaying(true))
-          .catch(() => {
-            // Ensure muted fallback
-            if (videoRef.current) {
-              videoRef.current.muted = true;
-              setVideoMuted(true);
-              videoRef.current.play()
-                .then(() => setIsVideoPlaying(true))
-                .catch(() => {});
-            }
-          });
+          .catch(() => {});
       }
 
-      // Audio: auto-play highlight
+      // Audio: attempt auto-play (if blocked by browser policy, user taps Play)
       if (currentPage === 3 && audioRef.current) {
         audioRef.current.play()
           .then(() => setIsAudioPlaying(true))
-          .catch(() => {});
+          .catch(() => {
+            setIsAudioPlaying(false);
+          });
       }
     }, 300); // wait for AnimatePresence to mount elements
 
@@ -452,12 +448,16 @@ export default function HomePage() {
     }
   };
 
-  const playVideo = () => {
+  const playVideo = (withSound = false) => {
     if (!videoRef.current) return;
+    if (withSound) {
+      videoRef.current.muted = false;
+      setVideoMuted(false);
+    }
     videoRef.current.play()
       .then(() => setIsVideoPlaying(true))
       .catch(() => {
-        // Autoplay blocked — retry muted (browser policy)
+        // Autoplay blocked with sound — retry muted (browser policy)
         if (videoRef.current) {
           videoRef.current.muted = true;
           setVideoMuted(true);
@@ -471,7 +471,7 @@ export default function HomePage() {
   const toggleVideoPlay = () => {
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
-      playVideo();
+      playVideo(true);
     } else {
       videoRef.current.pause();
       setIsVideoPlaying(false);
@@ -483,9 +483,9 @@ export default function HomePage() {
     audioRef.current.play()
       .then(() => setIsAudioPlaying(true))
       .catch(() => {
-        // m4a may be rejected on some browsers — try mp3 fallback
-        if (audioRef.current && !audioRef.current.currentSrc.includes('mp3')) {
-          audioRef.current.src = MEDIA_URLS.audioOverviewMp3;
+        // m4a fallback if mp3 fails
+        if (audioRef.current && !audioRef.current.src.includes('.m4a')) {
+          audioRef.current.src = MEDIA_URLS.audioOverviewM4a;
           audioRef.current.load();
           audioRef.current.play()
             .then(() => setIsAudioPlaying(true))
@@ -787,12 +787,11 @@ export default function HomePage() {
                         onPause={() => setIsNotesPlaying(false)}
                         onError={(e) => {
                           const el = e.currentTarget;
-                          if (el.src !== window.location.origin + MEDIA_URLS.localNotesVideo) {
-                            el.src = MEDIA_URLS.localNotesVideo;
+                          if (!el.src.includes('cloudinary')) {
+                            el.src = MEDIA_URLS.fallbackNotesVideo;
                             el.load();
                           }
                         }}
-                        onEnded={nextPage}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                       {!isNotesPlaying && (
@@ -895,12 +894,15 @@ export default function HomePage() {
                         }}
                         onError={(e) => {
                           const el = e.currentTarget;
-                          if (el.src !== window.location.origin + MEDIA_URLS.localVideoOverview) {
-                            el.src = MEDIA_URLS.localVideoOverview;
+                          if (!el.src.includes('cloudinary')) {
+                            el.src = MEDIA_URLS.fallbackVideoOverview;
                             el.load();
                           }
                         }}
-                        onEnded={nextPage}
+                        onEnded={() => {
+                          setIsVideoPlaying(false);
+                          setVideoTime(0);
+                        }}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
 
@@ -929,7 +931,7 @@ export default function HomePage() {
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
-                            playVideo();
+                            playVideo(true);
                           }}
                           style={{
                             position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)',
@@ -1042,11 +1044,15 @@ export default function HomePage() {
 
                       <audio
                         ref={audioRef}
+                        src={MEDIA_URLS.audioOverview}
                         preload="auto"
                         onPlay={() => setIsAudioPlaying(true)}
                         onPlaying={() => setIsAudioPlaying(true)}
                         onPause={() => setIsAudioPlaying(false)}
-                        onEnded={nextPage}
+                        onEnded={() => {
+                          setIsAudioPlaying(false);
+                          setAudioTime(0);
+                        }}
                         onLoadedMetadata={(e) => {
                           setAudioDuration(e.currentTarget.duration || 20);
                         }}
@@ -1059,21 +1065,16 @@ export default function HomePage() {
                           }
                         }}
                         onError={(e) => {
-                          const el = e.currentTarget as HTMLAudioElement;
-                          // Try mp3 fallback first, then local file
-                          if (!el.currentSrc.includes('mp3') && !el.currentSrc.includes('audio-highlight')) {
-                            el.src = MEDIA_URLS.audioOverviewMp3;
+                          const el = e.currentTarget;
+                          if (el.src.endsWith('.mp3')) {
+                            el.src = MEDIA_URLS.audioOverviewM4a;
                             el.load();
-                          } else if (!el.currentSrc.includes('audio-highlight')) {
-                            el.src = MEDIA_URLS.localAudio;
+                          } else if (!el.src.includes('cloudinary')) {
+                            el.src = MEDIA_URLS.fallbackAudioMp3;
                             el.load();
                           }
                         }}
-                      >
-                        {/* MP3 first for broadest browser support, m4a as fallback */}
-                        <source src={MEDIA_URLS.audioOverviewMp3} type="audio/mpeg" />
-                        <source src={MEDIA_URLS.audioOverview} type="audio/mp4" />
-                      </audio>
+                      />
 
                       {/* Equalizer Bars */}
                       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '0.4rem', height: '5rem', padding: '0.5rem 0' }}>
@@ -1108,16 +1109,17 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
                         <button
                           onClick={toggleAudioPlay}
                           style={{
                             display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                             padding: '0.65rem 1.5rem', backgroundColor: '#1E40AF', color: '#FFFFFF',
                             fontSize: '0.875rem', fontWeight: 500, border: 'none', cursor: 'pointer',
+                            borderRadius: '6px', boxShadow: '0 2px 8px rgba(30, 64, 175, 0.25)',
                           }}
                         >
-                          {isAudioPlaying ? '❚❚' : '▶'}
+                          {isAudioPlaying ? '❚❚ Pause' : '▶ Play Audio'}
                         </button>
                       </div>
                     </div>
