@@ -116,6 +116,12 @@ export default function HomePage() {
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = videoMuted;
+    }
+  }, [videoMuted]);
+
   /* ─────────────────────────────────────────────────────────────
      Loader
   ───────────────────────────────────────────────────────────── */
