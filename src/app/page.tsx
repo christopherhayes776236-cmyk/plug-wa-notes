@@ -1,280 +1,133 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AnimatePresence, motion, TargetAndTransition } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UNITS } from '@/lib/data';
+import { FormatIcon } from '@/components/FormatIcon';
+import { StaggerWords } from '@/components/text-animations/StaggerWords';
+import { ConvergeLetters } from '@/components/text-animations/ConvergeLetters';
+import { WipeReveal } from '@/components/text-animations/WipeReveal';
 
 const TOTAL_PAGES = 6;
 
-// 15 extracted slide images
-const SLIDE_IMAGES = Array.from({ length: 15 }, (_, i) => `/media/slides/image${i + 1}.png`);
+const LOADER_STORAGE_KEY = 'pwn_loader_date';
 
-const SLIDE_TOPICS = [
-  'Architectural Blueprint',
-  'Anatomy of a Communication System',
-  'Transmission Mediums & Topologies',
-  'Guided vs Unguided Media',
-  'Signal Representation & Spectrum',
-  'Bandwidth & Channel Capacity',
-  'Digital Modulation Techniques',
-  'Multiplexing Strategies (FDM / TDM)',
-  'Data Link Framing & Parity',
-  'Error Detection & CRC Polynomials',
-  'Flow Control & Sliding Windows',
-  'Network Protocol Hierarchy',
-  'OSI 7-Layer Reference Model',
-  'TCP/IP Protocol Suite Comparison',
-  'Key Exam Concepts & CAT Summary',
-];
+// ─── Loader: runs once-per-day, 1s count-up, 1.5s hard cap ───
+function useShouldShowLoader() {
+  const [shouldShow, setShouldShow] = useState(false);
+  const [checked, setChecked] = useState(false);
 
-const MEDIA_URLS = {
-  notesVideo: '/media/notes-overview.mp4',
-  videoOverview: '/media/video-overview.mp4',
-  audioOverview: '/media/audio-highlight.mp3',
-  audioOverviewM4a: '/media/audio-highlight.m4a',
-  audioMp4: '/media/Audio.mp4',
-};
+  useEffect(() => {
+    try {
+      const today = new Date().toDateString();
+      const last = window.localStorage.getItem(LOADER_STORAGE_KEY);
+      if (last !== today) {
+        setShouldShow(true);
+        window.localStorage.setItem(LOADER_STORAGE_KEY, today);
+      }
+    } catch {
+      // localStorage unavailable — fail safe, skip loader
+    }
+    setChecked(true);
+  }, []);
 
-/* ─── Motion variants per section ──────────────────────────────
-   Notes  → text enters from bottom  (up)
-   Video  → text enters from left
-   Audio  → typewriter (handled inline)
-   Slides → text enters from top (down)
-   Media  → always drops in from top-right feel
-──────────────────────────────────────────────────────────────── */
-const textVariants: Record<number, { initial: TargetAndTransition; animate: TargetAndTransition; exit: TargetAndTransition }> = {
-  1: {
-    initial: { opacity: 0, y: 28 },
-    animate: { opacity: 1, y: 0, x: 0 },
-    exit:    { opacity: 0, y: -20 },
-  },
-  2: {
-    initial: { opacity: 0, x: -28 },
-    animate: { opacity: 1, y: 0, x: 0 },
-    exit:    { opacity: 0, x: -20 },
-  },
-  3: {
-    initial: { opacity: 0, y: 28 },
-    animate: { opacity: 1, y: 0, x: 0 },
-    exit:    { opacity: 0, y: -20 },
-  },
-  4: {
-    initial: { opacity: 0, y: -24 },
-    animate: { opacity: 1, y: 0, x: 0 },
-    exit:    { opacity: 0, y: 20 },
-  },
-};
-
-const mediaVariants = {
-  enter: { opacity: [0, 1], y: [-24, 0] },
-  exit:  { opacity: [1, 0], y: [0, 20] },
-};
+  return { shouldShow, checked };
+}
 
 const springTransition = { duration: 0.52, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
-const exitTransition   = { duration: 0.38, ease: [0.4, 0, 1, 1] as [number, number, number, number] };
+
+// Typewriter text for Audio section
+const AUDIO_TEXT = 'Usiache kuosha viombo iku prevent from catching up, kua sharp boy/girl skiza audio overview';
 
 export default function HomePage() {
-  // ─── 1. Loader ────────────────────────────────────────────────
-  const [isLoading, setIsLoading] = useState(true);
+  // ─── Loader state ───────────────────────────────────────────
   const [loadPercent, setLoadPercent] = useState(0);
-
-  // Active fullpage index (0: Welcome, 1: Notes, 2: Video, 3: Audio, 4: Slides, 5: Units)
-  const [currentPage, setCurrentPage] = useState(0);
-  const isTransitioningRef = useRef(false);
-
-  // Touch gesture coordinates
-  const touchStartYRef = useRef(0);
-
-  // Animation key to re-trigger entrance transitions
-  const [animKey, setAnimKey] = useState(0);
-
-  // ─── 2. Phase per section: 'text' | 'media' ─────────────────
-  const [stagePhase, setStagePhase] = useState<'text' | 'media'>('text');
-
-  // Audio typewriter
-  const audioExactText = "Usiache kuosha viombo iku prevent from catching up, kua sharp boy/girl skiza audio overview";
-  const [typedAudioText, setTypedAudioText] = useState(audioExactText);
-  const [typingComplete, setTypingComplete] = useState(false);
-
-  // ─── 3. Media Refs ────────────────────────────────────────────
-  const notesVideoRef = useRef<HTMLVideoElement>(null);
-  const [isNotesPlaying, setIsNotesPlaying] = useState(false);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [videoTime, setVideoTime] = useState(0);
-  const [videoDuration, setVideoDuration] = useState(0);
-  const [videoMuted, setVideoMuted] = useState(true); // start muted so autoplay is allowed by browser
-
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [audioTime, setAudioTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
-  const [audioSpeed, setAudioSpeed] = useState(1);
-
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [loaderDone, setLoaderDone] = useState(false);
+  const { shouldShow, checked } = useShouldShowLoader();
+  const showLoader = checked && shouldShow && !loaderDone;
 
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = videoMuted;
+    if (!shouldShow || !checked) {
+      setLoaderDone(true);
+      return;
     }
-  }, [videoMuted]);
 
-  /* ─────────────────────────────────────────────────────────────
-     Loader
-  ───────────────────────────────────────────────────────────── */
-  useEffect(() => {
-    const startTime = performance.now();
-    const duration = 13000; // 13 seconds cramming animation
-    let rafId: number;
+    const COUNT_MS = 1000;
+    const HOLD_MS = 150;
+    const start = performance.now();
+    let raf: number;
 
-    const updateProgress = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
+    const tick = (now: number) => {
+      const progress = Math.min((now - start) / COUNT_MS, 1);
       setLoadPercent(Math.round(progress * 100));
-
       if (progress < 1) {
-        rafId = requestAnimationFrame(updateProgress);
+        raf = requestAnimationFrame(tick);
       } else {
-        setTimeout(() => setIsLoading(false), 350);
+        setTimeout(() => setLoaderDone(true), HOLD_MS);
       }
     };
-    rafId = requestAnimationFrame(updateProgress);
+    raf = requestAnimationFrame(tick);
 
-    const safetyCap = setTimeout(() => setIsLoading(false), 13600);
+    // Hard cap — never trap user longer than 1.5s
+    const hardCap = setTimeout(() => setLoaderDone(true), 1500);
+
     return () => {
-      cancelAnimationFrame(rafId);
-      clearTimeout(safetyCap);
+      cancelAnimationFrame(raf);
+      clearTimeout(hardCap);
     };
-  }, []);
+  }, [shouldShow, checked]);
 
-  /* ─────────────────────────────────────────────────────────────
-     Sequential Priority Preloading System
-     Stage 1 (13s Fast Loader):
-       - FULL buffer of Notes Video (top priority, 100% ready on exit)
-       - Partial Range warmup of next assets (256KB Video, 128KB Audio, Slide 1)
-     Stage 2 (Triggered on notes play / transition):
-       - Priority A: Next Video Overview full buffer
-       - Priority B: Audio Overview full buffer
-       - Priority C: Sequential preload of Slides 2–15 into CacheStorage
-  ───────────────────────────────────────────────────────────── */
+  // ─── Page navigation ─────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(0);
+  const isTransitioningRef = useRef(false);
+  const touchStartYRef = useRef(0);
+  const [animKey, setAnimKey] = useState(0);
   const router = useRouter();
-  const hasTriggeredBgPreloadRef = useRef(false);
 
-  const triggerSequentialBackgroundLoad = useCallback(() => {
-    if (hasTriggeredBgPreloadRef.current) return;
-    hasTriggeredBgPreloadRef.current = true;
-
-    // Priority A: Video Overview full buffer in background
-    const nextVideo = document.createElement('video');
-    nextVideo.preload = 'auto';
-    nextVideo.muted = true;
-    nextVideo.src = MEDIA_URLS.videoOverview;
-    nextVideo.load();
-
-    // Priority B: Audio Overview (staggered slightly to optimize bandwidth)
-    setTimeout(() => {
-      const nextAudio = document.createElement('audio');
-      nextAudio.preload = 'auto';
-      nextAudio.src = MEDIA_URLS.audioOverview;
-      nextAudio.load();
-    }, 450);
-
-    // Priority C: Sequential slide deck preloading into CacheStorage
-    setTimeout(async () => {
-      try {
-        const cache = typeof window !== 'undefined' && 'caches' in window
-          ? await caches.open('plug-wa-notes-content-v1')
-          : null;
-
-        for (let i = 1; i < SLIDE_IMAGES.length; i++) {
-          const src = SLIDE_IMAGES[i];
-          const img = new Image();
-          img.src = src;
-          if (cache) {
-            fetch(src, { cache: 'force-cache' })
-              .then((res) => {
-                if (res && res.status === 200) cache.put(src, res);
-              })
-              .catch(() => {});
-          }
-          // Stagger requests slightly so bandwidth stays free
-          await new Promise((r) => setTimeout(r, 100));
-        }
-      } catch (_) {}
-    }, 1100);
-  }, []);
+  // ─── Typewriter for audio page ───────────────────────────────
+  const [typedAudioText, setTypedAudioText] = useState('');
+  const [typingComplete, setTypingComplete] = useState(false);
 
   useEffect(() => {
-    // 1. High Priority FULL Preload of Notes Video during 13s loader
-    const notesVideo = document.createElement('video');
-    notesVideo.preload = 'auto';
-    notesVideo.muted = true;
-    notesVideo.src = MEDIA_URLS.notesVideo;
-    notesVideo.load();
+    if (currentPage !== 3) {
+      setTypedAudioText('');
+      setTypingComplete(false);
+      return;
+    }
 
-    // 2. Preload Slide 1 so first slide preview is instant
-    try {
-      const img1 = new Image();
-      img1.src = SLIDE_IMAGES[0];
-    } catch (_) {}
+    let idx = 0;
+    const interval = setInterval(() => {
+      idx++;
+      setTypedAudioText(AUDIO_TEXT.slice(0, idx));
+      if (idx >= AUDIO_TEXT.length) {
+        clearInterval(interval);
+        setTypingComplete(true);
+      }
+    }, 26);
 
-    // 3. Prefetch unit routes
+    return () => clearInterval(interval);
+  }, [currentPage, animKey]);
+
+  // ─── Prefetch unit routes during idle ────────────────────────
+  useEffect(() => {
     try {
       UNITS.forEach((unit) => {
         const slug = unit.code.toLowerCase().replace(/\s+/g, '');
         router.prefetch(`/unit/${slug}`);
       });
-    } catch (_) {}
+    } catch { /* ignore */ }
   }, [router]);
 
-  // When loader completes, automatically start background sequential queue after brief delay
-  useEffect(() => {
-    if (!isLoading) {
-      const timer = setTimeout(() => {
-        triggerSequentialBackgroundLoad();
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, triggerSequentialBackgroundLoad]);
-
-  /* ─────────────────────────────────────────────────────────────
-     Page Navigation Engine
-  ───────────────────────────────────────────────────────────── */
   const goToPage = useCallback((index: number) => {
     if (index < 0 || index >= TOTAL_PAGES) return;
     if (isTransitioningRef.current) return;
-
     isTransitioningRef.current = true;
     setCurrentPage(index);
     setAnimKey((k) => k + 1);
-    setStagePhase('text');
-
-    // If moving to any media page, trigger background loader
-    if (index > 0) {
-      triggerSequentialBackgroundLoad();
-    }
-
-    // Pause unselected media
-    if (index !== 1 && notesVideoRef.current) {
-      notesVideoRef.current.pause();
-      setIsNotesPlaying(false);
-    }
-    if (index !== 2 && videoRef.current) {
-      videoRef.current.pause();
-      setIsVideoPlaying(false);
-    }
-    if (index !== 3 && audioRef.current) {
-      audioRef.current.pause();
-      setIsAudioPlaying(false);
-    }
-
-    setTimeout(() => {
-      isTransitioningRef.current = false;
-    }, 650);
-  }, [triggerSequentialBackgroundLoad]);
+    setTimeout(() => { isTransitioningRef.current = false; }, 650);
+  }, []);
 
   const nextPage = useCallback(() => {
     if (currentPage < TOTAL_PAGES - 1) goToPage(currentPage + 1);
@@ -284,359 +137,112 @@ export default function HomePage() {
     if (currentPage > 0) goToPage(currentPage - 1);
   }, [currentPage, goToPage]);
 
-  /* ─────────────────────────────────────────────────────────────
-     Text phase choreography — starts on each page arrival
-     Notes / Video / Slides: auto-advance text → media after 1.8s
-     Audio: typewriter, then reveal media
-     Welcome / Units: stay in text phase
-  ───────────────────────────────────────────────────────────── */
+  // ─── Wheel + Keyboard ────────────────────────────────────────
   useEffect(() => {
-    if (currentPage === 1 || currentPage === 2 || currentPage === 4) {
-      setStagePhase('text');
-      const timer = setTimeout(() => setStagePhase('media'), 1800);
-      return () => clearTimeout(timer);
-    }
+    if (showLoader) return;
 
-    if (currentPage === 3) {
-      setStagePhase('text');
-      setTypedAudioText('');
-      setTypingComplete(false);
-
-      let idx = 0;
-      const typeTimer = setInterval(() => {
-        idx++;
-        setTypedAudioText(audioExactText.slice(0, idx));
-        if (idx >= audioExactText.length) {
-          clearInterval(typeTimer);
-          setTypingComplete(true);
-          setTimeout(() => setStagePhase('media'), 1400);
-        }
-      }, 26);
-
-      return () => clearInterval(typeTimer);
-    }
-
-    setStagePhase('text');
-  }, [currentPage, animKey]);
-
-  /* ─────────────────────────────────────────────────────────────
-     Auto-play media when phase switches to 'media'
-     Uses a 300ms delay so AnimatePresence finishes mounting
-     the DOM elements before we try to call .play()
-  ───────────────────────────────────────────────────────────── */
-  useEffect(() => {
-    if (stagePhase !== 'media') return;
-
-    const timer = setTimeout(() => {
-      // Notes: auto-play looping scroll video (muted, always works)
-      if (currentPage === 1 && notesVideoRef.current) {
-        notesVideoRef.current.play().catch(() => {});
-      }
-
-      // Video: auto-play video overview (starts muted so autoplay allowed by browser)
-      if (currentPage === 2 && videoRef.current) {
-        videoRef.current.muted = true;
-        setVideoMuted(true);
-        videoRef.current.play()
-          .then(() => setIsVideoPlaying(true))
-          .catch(() => {});
-      }
-
-      // Audio: attempt auto-play (if blocked by browser policy, user taps Play)
-      if (currentPage === 3 && audioRef.current) {
-        audioRef.current.play()
-          .then(() => setIsAudioPlaying(true))
-          .catch(() => {
-            setIsAudioPlaying(false);
-          });
-      }
-    }, 300); // wait for AnimatePresence to mount elements
-
-    return () => clearTimeout(timer);
-  }, [stagePhase, currentPage]);
-
-  /* ─────────────────────────────────────────────────────────────
-     Stop media when navigating away from its page
-  ───────────────────────────────────────────────────────────── */
-  useEffect(() => {
-    // Pause video overview when not on page 2
-    if (currentPage !== 2 && videoRef.current && !videoRef.current.paused) {
-      videoRef.current.pause();
-      setIsVideoPlaying(false);
-    }
-    // Pause audio when not on page 3
-    if (currentPage !== 3 && audioRef.current && !audioRef.current.paused) {
-      audioRef.current.pause();
-      setIsAudioPlaying(false);
-    }
-    // Pause notes video when not on page 1
-    if (currentPage !== 1 && notesVideoRef.current && !notesVideoRef.current.paused) {
-      notesVideoRef.current.pause();
-      setIsNotesPlaying(false);
-    }
-  }, [currentPage]);
-
-  /* ─────────────────────────────────────────────────────────────
-     Desktop Wheel & Keyboard Handlers
-  ───────────────────────────────────────────────────────────── */
-  useEffect(() => {
-    if (isLoading) return;
-
-    const handleWheel = (e: WheelEvent) => {
+    const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('.scroll-container') || target.closest('.unit-grid')) return;
+      if (target.closest('.unit-grid')) return;
       if (Math.abs(e.deltaY) > 28) {
         e.deltaY > 0 ? nextPage() : prevPage();
       }
     };
 
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
-        e.preventDefault();
-        nextPage();
+        e.preventDefault(); nextPage();
       } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
-        e.preventDefault();
-        prevPage();
+        e.preventDefault(); prevPage();
       }
     };
 
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('keydown', onKey);
     return () => {
-      window.removeEventListener('wheel', handleWheel);
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('keydown', onKey);
     };
-  }, [isLoading, nextPage, prevPage]);
+  }, [showLoader, nextPage, prevPage]);
 
-  /* ─────────────────────────────────────────────────────────────
-     Mobile Touch Handlers
-  ───────────────────────────────────────────────────────────── */
+  // ─── Touch ───────────────────────────────────────────────────
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartYRef.current = e.touches[0].clientY;
   };
-
   const handleTouchEnd = (e: React.TouchEvent) => {
     const deltaY = touchStartYRef.current - e.changedTouches[0].clientY;
     if (Math.abs(deltaY) > 42) deltaY > 0 ? nextPage() : prevPage();
   };
 
-  /* ─────────────────────────────────────────────────────────────
-     Media Handlers (Single-Tap Direct Play + Toggle)
-  ───────────────────────────────────────────────────────────── */
-  const playNotes = () => {
-    if (!notesVideoRef.current) return;
-    notesVideoRef.current.play().then(() => {
-      setIsNotesPlaying(true);
-      triggerSequentialBackgroundLoad();
-    }).catch(() => {
-      if (notesVideoRef.current) {
-        notesVideoRef.current.muted = true;
-        notesVideoRef.current.play().then(() => {
-          setIsNotesPlaying(true);
-          triggerSequentialBackgroundLoad();
-        }).catch(() => {});
-      }
-    });
-  };
-
-  const toggleNotesPlay = () => {
-    if (!notesVideoRef.current) return;
-    if (notesVideoRef.current.paused) {
-      playNotes();
-    } else {
-      notesVideoRef.current.pause();
-      setIsNotesPlaying(false);
-    }
-  };
-
-  const playVideo = (withSound = false) => {
-    if (!videoRef.current) return;
-    if (withSound) {
-      videoRef.current.muted = false;
-      setVideoMuted(false);
-    }
-    videoRef.current.play()
-      .then(() => setIsVideoPlaying(true))
-      .catch(() => {
-        // Autoplay blocked with sound — retry muted (browser policy)
-        if (videoRef.current) {
-          videoRef.current.muted = true;
-          setVideoMuted(true);
-          videoRef.current.play()
-            .then(() => setIsVideoPlaying(true))
-            .catch(() => {});
-        }
-      });
-  };
-
-  const toggleVideoPlay = () => {
-    if (!videoRef.current) return;
-    if (videoRef.current.paused) {
-      playVideo(true);
-    } else {
-      videoRef.current.pause();
-      setIsVideoPlaying(false);
-    }
-  };
-
-  const playAudio = () => {
-    if (!audioRef.current) return;
-    audioRef.current.play()
-      .then(() => setIsAudioPlaying(true))
-      .catch(() => {
-        // m4a fallback if mp3 fails
-        if (audioRef.current && !audioRef.current.src.includes('.m4a')) {
-          audioRef.current.src = MEDIA_URLS.audioOverviewM4a;
-          audioRef.current.load();
-          audioRef.current.play()
-            .then(() => setIsAudioPlaying(true))
-            .catch(() => {});
-        }
-      });
-  };
-
-  const toggleAudioPlay = () => {
-    if (!audioRef.current) return;
-    if (audioRef.current.paused) {
-      playAudio();
-    } else {
-      audioRef.current.pause();
-      setIsAudioPlaying(false);
-    }
-  };
-
-  const changeAudioSpeed = (speed: number) => {
-    if (!audioRef.current) return;
-    audioRef.current.playbackRate = speed;
-    setAudioSpeed(speed);
-  };
-
-  const formatSeconds = (sec: number) => {
-    if (!sec || isNaN(sec)) return '00:00';
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  /* ─────────────────────────────────────────────────────────────
-     Framer Motion wrappers for text ↔ media phases
-  ───────────────────────────────────────────────────────────── */
-  const TextPhase = ({ children, pageIdx }: { children: React.ReactNode; pageIdx: number }) => {
-    const vars = textVariants[pageIdx] || textVariants[1];
-    return (
-      <motion.div
-        key="text-phase"
-        initial={vars.initial}
-        animate={vars.animate}
-        exit={vars.exit}
-        transition={springTransition}
-        style={{ width: '100%', maxWidth: '780px', margin: '0 auto', textAlign: 'center', padding: '1.5rem 1rem' }}
-      >
-        {children}
-      </motion.div>
-    );
-  };
-
-  const MediaPhase = ({ children }: { children: React.ReactNode }) => (
-    <motion.div
-      key="media-phase"
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 16 }}
-      transition={springTransition}
-      style={{
-        width: '92vw',
-        maxWidth: '480px',
-        minHeight: '70vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        margin: '0 auto',
-        position: 'relative',
-      }}
-    >
-      {children}
-    </motion.div>
-  );
-
   return (
     <>
-      {/* ─── Loader with Cramming GIF (13s duration) ──────────────── */}
-      {isLoading && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          backgroundColor: '#F6F4EF', color: '#23211E',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          padding: '1.5rem',
-          transition: 'opacity 0.35s ease',
-        }}>
-          {/* Study / Cramming GIF Container */}
-          <div style={{
-            width: 'min(88vw, 320px)',
-            borderRadius: '16px',
-            overflow: 'hidden',
-            boxShadow: '0 12px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06)',
-            border: '1px solid rgba(0, 0, 0, 0.08)',
-            backgroundColor: '#000',
-            marginBottom: '1.25rem',
-          }}>
-            <img
-              src="https://res.cloudinary.com/nd4ofxfu/image/upload/v1789866745/plug-wa-notes/kid-study.gif"
-              alt="Content loading..."
-              loading="eager"
-              decoding="async"
-              onError={(e) => {
-                // Fallback to local asset if Cloudinary fails
-                (e.target as HTMLImageElement).src = '/media/kid-study.gif';
-              }}
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block',
-                aspectRatio: '4 / 3',
-                objectFit: 'cover',
-              }}
-            />
-          </div>
+      {/* ─── Loader ─────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showLoader && (
+          <motion.div
+            key="loader"
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              backgroundColor: '#F6F4EF',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '0.75rem',
+            }}
+          >
+            <div style={{
+              fontFamily: 'var(--font-display)', fontWeight: 600,
+              fontSize: '1.25rem', color: '#0F172A', letterSpacing: '-0.015em',
+            }}>
+              Plug Wa Notes
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums',
+              fontWeight: 600, fontSize: '0.9375rem', color: '#1E40AF',
+            }}>
+              {loadPercent}%
+            </div>
+            <div style={{
+              width: '140px', height: '3px',
+              backgroundColor: '#E2E8F0', borderRadius: '999px', overflow: 'hidden',
+            }}>
+              <div style={{
+                width: `${loadPercent}%`, height: '100%',
+                backgroundColor: '#1E40AF', borderRadius: '999px',
+                transition: 'width 0.05s linear',
+              }} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.35rem', color: '#0F172A', letterSpacing: '-0.02em', textAlign: 'center' }}>
-            Plug Wa Notes
-          </div>
+      {/* ─── Full-page container ────────────────────────────── */}
+      <div
+        className="fullpage-wrapper"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        style={{ opacity: showLoader ? 0 : 1, transition: 'opacity 0.3s ease' }}
+      >
 
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.8125rem', color: '#64748B', marginTop: '0.25rem', textAlign: 'center' }}>
-            Content loading...
-          </div>
-
-          {/* Numerical Progress */}
-          <div style={{ fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: '0.9375rem', color: '#1E40AF', marginTop: '0.75rem' }}>
-            {loadPercent}%
-          </div>
-
-          {/* Progress Bar */}
-          <div style={{ width: 'min(80vw, 240px)', height: '4px', backgroundColor: '#E2E8F0', marginTop: '0.625rem', borderRadius: '999px', overflow: 'hidden' }}>
-            <div style={{ width: `${loadPercent}%`, height: '100%', backgroundColor: '#1E40AF', borderRadius: '999px', transition: 'width 0.1s linear' }} />
-          </div>
-        </div>
-      )}
-
-      {/* ─── Full-Page Container ──────────────────────────────────── */}
-      <div className="fullpage-wrapper" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-
-        {/* Floating Minimalist Header */}
+        {/* Floating Header */}
         <header style={{
           position: 'fixed', top: 0, left: 0, right: 0, height: '4.25rem', zIndex: 60,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 1.5rem', maxWidth: '1180px', margin: '0 auto', pointerEvents: 'none',
         }}>
           <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.05rem', color: '#0F172A', letterSpacing: '-0.01em' }}>
+            <span style={{
+              fontFamily: 'var(--font-display)', fontWeight: 600,
+              fontSize: '1.05rem', color: '#0F172A', letterSpacing: '-0.01em',
+            }}>
               Plug Wa Notes
             </span>
             <span style={{
               fontSize: '0.6875rem', fontFamily: 'monospace', color: '#475569',
               background: '#F1F5F9', padding: '0.125rem 0.45rem', border: '1px solid #E2E8F0',
             }}>
-              0{currentPage + 1} / 0{TOTAL_PAGES}
+              {currentPage + 1}/{TOTAL_PAGES}
             </span>
           </div>
 
@@ -646,7 +252,7 @@ export default function HomePage() {
               style={{
                 pointerEvents: 'auto', fontSize: '0.75rem', fontWeight: 500,
                 color: '#1E40AF', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE',
-                padding: '0.35rem 0.85rem', cursor: 'pointer', transition: 'background-color 0.15s ease',
+                padding: '0.35rem 0.85rem', cursor: 'pointer',
               }}
             >
               Units ↓
@@ -665,10 +271,10 @@ export default function HomePage() {
           )}
         </header>
 
-        {/* Floating Right Pagination HUD */}
+        {/* Floating Right Pagination dots */}
         <nav className="fullpage-hud" aria-label="Page navigation">
           {[0, 1, 2, 3, 4, 5].map((idx) => {
-            const isTeal = idx === 2 || idx === 4;
+            const isTeal = idx === 2 || idx === 3;
             const isActive = currentPage === idx;
             return (
               <button
@@ -681,49 +287,64 @@ export default function HomePage() {
           })}
         </nav>
 
-        {/* ─── Animated Vertical Track ─────────────────────────────── */}
+        {/* ─── Animated Vertical Track ──────────────────────── */}
         <div className="fullpage-track" style={{ transform: `translate3d(0, -${currentPage * 100}%, 0)` }}>
 
-          {/* ═══════════════════════════════════════════════════════
-              PAGE 1 – Welcome
-          ═══════════════════════════════════════════════════════ */}
+          {/* ═══════════ PAGE 1 – Welcome ═══════════ */}
           <section className="fullpage-slide" key={`slide-0-${animKey}`}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: '960px', margin: '0 auto', width: '100%' }}>
-              <h1 className="anim-fade-in" style={{
-                fontSize: 'clamp(2rem, 4.2vw, 3.25rem)',
-                fontFamily: 'var(--font-display)', fontWeight: 500, color: '#0F172A',
-                lineHeight: 1.18, letterSpacing: '-0.02em', maxWidth: '820px',
-              }}>
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              maxWidth: '1100px', margin: '0 auto', width: '100%',
+            }}>
+              <h1
+                className="anim-fade-in"
+                style={{
+                  fontSize: 'clamp(2rem, 4.2vw, 3.25rem)',
+                  fontFamily: 'var(--font-display)', fontWeight: 500, color: '#0F172A',
+                  lineHeight: 1.18, letterSpacing: '-0.02em', maxWidth: '820px',
+                }}
+              >
                 &ldquo;Welcome to Your Knowledge Bank - where learning is made fun&rdquo;
               </h1>
 
-              <div className="anim-fade-in" style={{
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
-                gap: '1rem', marginTop: '2.5rem',
-              }}>
+              <div
+                className="anim-fade-in"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                  gap: '1rem', marginTop: '2.5rem',
+                }}
+              >
                 {[
-                  { idx: 1, label: '01 / NOTES', title: 'Clean Lecture Notes', sub: 'Page 1 scroll preview →', color: '#1E40AF' },
-                  { idx: 2, label: '02 / VIDEO', title: 'Explainer Review', sub: 'Visual chapter teaser →', color: '#0D9488' },
-                  { idx: 3, label: '03 / AUDIO', title: 'Audio Overview', sub: '20s highlight player →', color: '#1E40AF' },
-                  { idx: 4, label: '04 / SLIDES', title: 'Exam Revision Deck', sub: 'Quick slide flip →', color: '#0D9488' },
-                ].map(({ idx, label, title, sub, color }) => (
+                  { idx: 1, label: 'Notes',  title: 'Clean Lecture Notes',   color: '#1E40AF' },
+                  { idx: 2, label: 'Video',  title: 'Explainer Review',       color: '#0D9488' },
+                  { idx: 3, label: 'Audio',  title: 'Audio Overview',         color: '#1E40AF' },
+                  { idx: 4, label: 'Slides', title: 'Exam Revision Deck',     color: '#0D9488' },
+                ].map(({ idx, label, title, color }) => (
                   <button
                     key={idx}
                     onClick={() => goToPage(idx)}
                     style={{
                       background: '#FFFFFF', border: '1px solid #E2E8F0', padding: '1.25rem',
-                      textAlign: 'left', cursor: 'pointer', transition: 'border-color 0.15s ease, transform 0.15s ease',
+                      textAlign: 'left', cursor: 'pointer',
+                      transition: 'border-color 0.15s ease, transform 0.15s ease',
                     }}
                   >
-                    <div style={{ color, fontWeight: 600, fontFamily: 'monospace', fontSize: '0.8125rem' }}>{label}</div>
-                    <div style={{ color: '#0F172A', marginTop: '0.35rem', fontWeight: 600, fontSize: '0.9375rem' }}>{title}</div>
-                    <div style={{ color: '#64748B', fontSize: '0.75rem', marginTop: '0.25rem' }}>{sub}</div>
+                    <div style={{ color, fontWeight: 600, fontFamily: 'monospace', fontSize: '0.8125rem' }}>
+                      {label}
+                    </div>
+                    <div style={{ color: '#0F172A', marginTop: '0.35rem', fontWeight: 600, fontSize: '0.9375rem' }}>
+                      {title}
+                    </div>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem',
+            }}>
               <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Swipe up or scroll to start</span>
               <button
                 onClick={nextPage}
@@ -738,95 +359,29 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* ═══════════════════════════════════════════════════════
-              PAGE 2 – Notes
-          ═══════════════════════════════════════════════════════ */}
+          {/* ═══════════ PAGE 2 – Notes ═══════════ */}
           <section className="fullpage-slide" key={`slide-1-${animKey}`}>
-            <div className="choreography-stage">
-              <AnimatePresence mode="wait">
-                {stagePhase === 'text' ? (
-                  <TextPhase key="notes-text" pageIdx={1}>
-                    <h2 style={{
-                      fontSize: 'clamp(1.75rem, 3.6vw, 2.75rem)',
-                      fontFamily: 'var(--font-display)', fontWeight: 500, color: '#1E40AF', lineHeight: 1.22,
-                    }}>
-                      &ldquo;Feeling behind in class? No stress - Pata notes hapa.&rdquo;
-                    </h2>
-                    <button
-                      onClick={() => setStagePhase('media')}
-                      style={{ marginTop: '1.25rem', background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Skip to preview →
-                    </button>
-                  </TextPhase>
-                ) : (
-                  <MediaPhase key="notes-media">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span className="teaser-pill teaser-pill-blue">Page 1 of 12 — full pack via download</span>
-                      <button onClick={() => setStagePhase('text')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer' }}>
-                        ← back
-                      </button>
-                    </div>
-
-                    <div
-                      className="dominant-player-box dominant-player-light"
-                      onClick={toggleNotesPlay}
-                      style={{ aspectRatio: '16/10', maxHeight: '62vh', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}
-                    >
-                      <video
-                        ref={notesVideoRef}
-                        src={MEDIA_URLS.notesVideo}
-                        preload="auto"
-                        loop
-                        muted
-                        playsInline
-                        onPlay={() => {
-                          setIsNotesPlaying(true);
-                          triggerSequentialBackgroundLoad();
-                        }}
-                        onPlaying={() => setIsNotesPlaying(true)}
-                        onPause={() => setIsNotesPlaying(false)}
-                        onError={() => {
-                          if (notesVideoRef.current && notesVideoRef.current.paused) {
-                            notesVideoRef.current.load();
-                          }
-                        }}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                      />
-                      {!isNotesPlaying && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playNotes();
-                          }}
-                          style={{
-                            position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)',
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                            cursor: 'pointer', zIndex: 10,
-                          }}
-                        >
-                          <div style={{
-                            pointerEvents: 'none',
-                            width: '3.5rem', height: '3.5rem', borderRadius: '50%', backgroundColor: '#1E40AF',
-                            color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '1.35rem', paddingLeft: '3px', boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
-                          }}>▶</div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', fontSize: '0.75rem', color: '#64748B' }}>
-                      <span>Real lecture scroll recording</span>
-                      <button onClick={() => goToPage(5)} style={{ color: '#1E40AF', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>
-                        Get Full Unit Pack →
-                      </button>
-                    </div>
-                  </MediaPhase>
-                )}
-              </AnimatePresence>
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: '1.5rem', maxWidth: '1100px', margin: '0 auto',
+              width: '100%', textAlign: 'center', padding: '1.5rem 1rem',
+            }}>
+              <FormatIcon type="notes" color="#2450C8" size={56} />
+              <h2 style={{
+                fontSize: 'clamp(1.75rem, 3.6vw, 2.75rem)',
+                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.22,
+              }}>
+                <StaggerWords
+                  text="Feeling behind in class? No stress - Pata notes hapa."
+                  color="#1E40AF"
+                />
+              </h2>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem',
+            }}>
               <button onClick={prevPage} style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}>↑</button>
               <button onClick={nextPage} style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.35rem',
@@ -835,146 +390,29 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* ═══════════════════════════════════════════════════════
-              PAGE 3 – Video Review (Full Video Player)
-          ═══════════════════════════════════════════════════════ */}
+          {/* ═══════════ PAGE 3 – Video ═══════════ */}
           <section className="fullpage-slide" key={`slide-2-${animKey}`}>
-            <div className="choreography-stage">
-              <AnimatePresence mode="wait">
-                {stagePhase === 'text' ? (
-                  <TextPhase key="video-text" pageIdx={2}>
-                    <h2 style={{
-                      fontSize: 'clamp(1.75rem, 3.6vw, 2.75rem)',
-                      fontFamily: 'var(--font-display)', fontWeight: 500, color: '#0D9488', lineHeight: 1.22,
-                    }}>
-                      &ldquo;Some units just make more sense in visuals - Pata video review hapa ndani.&rdquo;
-                    </h2>
-                    <button
-                      onClick={() => setStagePhase('media')}
-                      style={{ marginTop: '1.25rem', background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Skip to video →
-                    </button>
-                  </TextPhase>
-                ) : (
-                  <MediaPhase key="video-media">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0D9488', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
-                        Video Overview
-                      </span>
-                      <button onClick={() => setStagePhase('text')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer' }}>
-                        ← back
-                      </button>
-                    </div>
-
-                    <div
-                      className="dominant-player-box"
-                      onClick={toggleVideoPlay}
-                      style={{ aspectRatio: '16/9', maxHeight: '62vh', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}
-                    >
-                      <video
-                        ref={videoRef}
-                        src={MEDIA_URLS.videoOverview}
-                        preload="auto"
-                        playsInline
-                        muted={videoMuted}
-                        onPlay={() => setIsVideoPlaying(true)}
-                        onPlaying={() => setIsVideoPlaying(true)}
-                        onPause={() => setIsVideoPlaying(false)}
-                        onLoadedMetadata={(e) => {
-                          setVideoDuration(e.currentTarget.duration);
-                        }}
-                        onTimeUpdate={() => {
-                          if (!videoRef.current) return;
-                          setVideoTime(videoRef.current.currentTime);
-                          if (!videoDuration && videoRef.current.duration) {
-                            setVideoDuration(videoRef.current.duration);
-                          }
-                        }}
-                        onError={() => {
-                          if (videoRef.current && videoRef.current.paused) {
-                            videoRef.current.load();
-                          }
-                        }}
-                        onEnded={() => {
-                          setIsVideoPlaying(false);
-                          setVideoTime(0);
-                        }}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                      />
-
-                      {/* Tap-to-unmute badge — shows when video is muted and playing */}
-                      {isVideoPlaying && videoMuted && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (videoRef.current) videoRef.current.muted = false;
-                            setVideoMuted(false);
-                          }}
-                          style={{
-                            position: 'absolute', bottom: '0.75rem', right: '0.75rem',
-                            backgroundColor: 'rgba(15,23,42,0.72)', color: '#FFFFFF',
-                            fontSize: '0.7rem', fontWeight: 600, padding: '0.3rem 0.6rem',
-                            borderRadius: '999px', cursor: 'pointer', zIndex: 11,
-                            display: 'flex', alignItems: 'center', gap: '0.3rem',
-                            letterSpacing: '0.01em',
-                          }}
-                        >
-                          🔇 Tap to unmute
-                        </div>
-                      )}
-
-                      {!isVideoPlaying && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playVideo(true);
-                          }}
-                          style={{
-                            position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)',
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                            cursor: 'pointer', zIndex: 10,
-                          }}
-                        >
-                          <div style={{
-                            pointerEvents: 'none',
-                            width: '3.5rem', height: '3.5rem', borderRadius: '50%', backgroundColor: '#0D9488',
-                            color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '1.35rem', paddingLeft: '3px', boxShadow: '0 6px 18px rgba(0,0,0,0.3)',
-                          }}>▶</div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ marginTop: '0.75rem' }}>
-                      {/* Clickable Seekable Progress Bar */}
-                      <div
-                        onClick={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          const clickX = e.clientX - rect.left;
-                          const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-                          if (videoRef.current && videoDuration) {
-                            videoRef.current.currentTime = ratio * videoDuration;
-                            setVideoTime(ratio * videoDuration);
-                          }
-                        }}
-                        style={{ width: '100%', height: '7px', backgroundColor: 'rgba(15,23,42,0.12)', position: 'relative', cursor: 'pointer', borderRadius: '4px', overflow: 'hidden' }}
-                      >
-                        <div style={{ height: '100%', width: `${videoDuration ? Math.min((videoTime / videoDuration) * 100, 100) : 0}%`, backgroundColor: '#0D9488', transition: 'width 0.1s linear' }} />
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', fontFamily: 'monospace', color: '#64748B', marginTop: '0.35rem' }}>
-                        <span>{formatSeconds(videoTime)} / {formatSeconds(videoDuration || 0)}</span>
-                        <button onClick={() => setVideoMuted(!videoMuted)} style={{ background: 'none', border: 'none', color: '#0D9488', cursor: 'pointer', fontWeight: 500 }}>
-                          {videoMuted ? '🔇' : '🔊'}
-                        </button>
-                      </div>
-                    </div>
-                  </MediaPhase>
-                )}
-              </AnimatePresence>
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: '1.5rem', maxWidth: '1100px', margin: '0 auto',
+              width: '100%', textAlign: 'center', padding: '1.5rem 1rem',
+            }}>
+              <FormatIcon type="video" color="#157F72" size={56} />
+              <h2 style={{
+                fontSize: 'clamp(1.75rem, 3.6vw, 2.75rem)',
+                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.22,
+              }}>
+                <ConvergeLetters
+                  text="Some units just make more sense in visuals - Pata video review hapa ndani."
+                  color="#0D9488"
+                />
+              </h2>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem',
+            }}>
               <button onClick={prevPage} style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}>↑</button>
               <button onClick={nextPage} style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.35rem',
@@ -983,149 +421,28 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* ═══════════════════════════════════════════════════════
-              PAGE 4 – Audio (Typewriter → Dominant Audio Station)
-          ═══════════════════════════════════════════════════════ */}
+          {/* ═══════════ PAGE 4 – Audio (typewriter) ═══════════ */}
           <section className="fullpage-slide" key={`slide-3-${animKey}`}>
-            <div className="choreography-stage">
-              <AnimatePresence mode="wait">
-                {stagePhase === 'text' ? (
-                  <TextPhase key="audio-text" pageIdx={3}>
-                    <h2 style={{
-                      fontSize: 'clamp(1.5rem, 3.2vw, 2.5rem)',
-                      fontFamily: 'var(--font-display)', fontWeight: 500, color: '#1E40AF',
-                      lineHeight: 1.28, minHeight: '4.5rem',
-                    }}>
-                      &ldquo;{typedAudioText}&rdquo;
-                      {!typingComplete && <span className="typewriter-cursor" />}
-                    </h2>
-                    <button
-                      onClick={() => setStagePhase('media')}
-                      style={{ marginTop: '1.25rem', background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Skip to preview →
-                    </button>
-                  </TextPhase>
-                ) : (
-                  <MediaPhase key="audio-media">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span className="teaser-pill teaser-pill-blue">20-Second Audio Highlight</span>
-                      <button onClick={() => setStagePhase('text')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer' }}>
-                        ← back
-                      </button>
-                    </div>
-
-                    <div className="dominant-player-box dominant-player-light" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '1.25rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1E40AF' }}>Audio Overview Highlight</div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.15rem' }}>20-second recap snippet</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.25rem' }}>
-                          {[1, 1.25, 1.5].map((spd) => (
-                            <button
-                              key={spd}
-                              onClick={() => changeAudioSpeed(spd)}
-                              style={{
-                                fontSize: '0.625rem', fontFamily: 'monospace', padding: '0.2rem 0.4rem',
-                                background: audioSpeed === spd ? '#1E40AF' : '#FFFFFF',
-                                color: audioSpeed === spd ? '#FFFFFF' : '#1E40AF',
-                                border: '1px solid #BFDBFE', cursor: 'pointer',
-                              }}
-                            >
-                              {spd}x
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <audio
-                        ref={audioRef}
-                        src={MEDIA_URLS.audioOverview}
-                        preload="auto"
-                        onPlay={() => setIsAudioPlaying(true)}
-                        onPlaying={() => setIsAudioPlaying(true)}
-                        onPause={() => setIsAudioPlaying(false)}
-                        onEnded={() => {
-                          setIsAudioPlaying(false);
-                          setAudioTime(0);
-                        }}
-                        onLoadedMetadata={(e) => {
-                          setAudioDuration(e.currentTarget.duration || 20);
-                        }}
-                        onTimeUpdate={() => {
-                          if (audioRef.current) {
-                            setAudioTime(audioRef.current.currentTime);
-                            if (audioRef.current.duration && (!audioDuration || audioDuration === 20)) {
-                              setAudioDuration(audioRef.current.duration);
-                            }
-                          }
-                        }}
-                        onError={(e) => {
-                          const el = e.currentTarget;
-                          if (el.src.endsWith('.mp3')) {
-                            el.src = MEDIA_URLS.audioOverviewM4a;
-                            el.load();
-                          } else if (el.src.endsWith('.m4a')) {
-                            el.src = MEDIA_URLS.audioMp4;
-                            el.load();
-                          }
-                        }}
-                      />
-
-                      {/* Equalizer Bars */}
-                      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '0.4rem', height: '5rem', padding: '0.5rem 0' }}>
-                        {[18, 36, 48, 28, 42, 54, 32, 46, 22, 38, 50, 26, 40, 24, 36, 48, 20, 32, 44, 28].map((h, i) => (
-                          <div
-                            key={i}
-                            className={`eq-bar ${isAudioPlaying ? 'playing' : 'paused'}`}
-                            style={{
-                              '--eq-h': `${Math.max(8, (h * 1.3) % 56 + 6)}px`,
-                              '--eq-dur': `${0.45 + (i % 5) * 0.08}s`,
-                              animationDelay: isAudioPlaying ? `${(i % 7) * 0.05}s` : '0s',
-                            } as React.CSSProperties}
-                          />
-                        ))}
-                      </div>
-
-                      {/* Scrub Bar */}
-                      <div>
-                        <div
-                          onClick={(e) => {
-                            if (!audioRef.current || !audioDuration) return;
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * audioDuration;
-                          }}
-                          style={{ width: '100%', height: '6px', backgroundColor: '#DBEAFE', cursor: 'pointer', position: 'relative' }}
-                        >
-                          <div style={{ height: '100%', width: `${audioDuration ? (audioTime / audioDuration) * 100 : 0}%`, backgroundColor: '#1E40AF' }} />
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', fontFamily: 'monospace', color: '#475569', marginTop: '0.5rem' }}>
-                          <span>{formatSeconds(audioTime)}</span>
-                          <span>{formatSeconds(audioDuration || 20)}</span>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
-                        <button
-                          onClick={toggleAudioPlay}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                            padding: '0.65rem 1.5rem', backgroundColor: '#1E40AF', color: '#FFFFFF',
-                            fontSize: '0.875rem', fontWeight: 500, border: 'none', cursor: 'pointer',
-                            borderRadius: '6px', boxShadow: '0 2px 8px rgba(30, 64, 175, 0.25)',
-                          }}
-                        >
-                          {isAudioPlaying ? '❚❚ Pause' : '▶ Play Audio'}
-                        </button>
-                      </div>
-                    </div>
-                  </MediaPhase>
-                )}
-              </AnimatePresence>
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: '1.5rem', maxWidth: '1100px', margin: '0 auto',
+              width: '100%', textAlign: 'center', padding: '1.5rem 1rem',
+            }}>
+              <FormatIcon type="audio" color="#157F72" size={56} />
+              <h2 style={{
+                fontSize: 'clamp(1.5rem, 3.2vw, 2.5rem)',
+                fontFamily: 'var(--font-display)', fontWeight: 500, color: '#1E40AF',
+                lineHeight: 1.28, minHeight: '4.5rem',
+              }}>
+                &ldquo;{typedAudioText}&rdquo;
+                {!typingComplete && <span className="typewriter-cursor" />}
+              </h2>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem',
+            }}>
               <button onClick={prevPage} style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}>↑</button>
               <button onClick={nextPage} style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.35rem',
@@ -1134,96 +451,29 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* ═══════════════════════════════════════════════════════
-              PAGE 5 – Slides (All 15 Slides Unlocked)
-          ═══════════════════════════════════════════════════════ */}
+          {/* ═══════════ PAGE 5 – Slides ═══════════ */}
           <section className="fullpage-slide" key={`slide-4-${animKey}`}>
-            <div className="choreography-stage">
-              <AnimatePresence mode="wait">
-                {stagePhase === 'text' ? (
-                  <TextPhase key="slides-text" pageIdx={4}>
-                    <h2 style={{
-                      fontSize: 'clamp(1.75rem, 3.6vw, 2.75rem)',
-                      fontFamily: 'var(--font-display)', fontWeight: 500, color: '#0D9488', lineHeight: 1.22,
-                    }}>
-                      &ldquo;Need a short version before cats or exams? Pata slides hapa.&rdquo;
-                    </h2>
-                    <button
-                      onClick={() => setStagePhase('media')}
-                      style={{ marginTop: '1.25rem', background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Skip to preview →
-                    </button>
-                  </TextPhase>
-                ) : (
-                  <MediaPhase key="slides-media">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span className="teaser-pill teaser-pill-teal">Slide {currentSlide + 1} of {SLIDE_IMAGES.length}</span>
-                      <button onClick={() => setStagePhase('text')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: '0.75rem', cursor: 'pointer' }}>
-                        ← back
-                      </button>
-                    </div>
-
-                    <div
-                      className="dominant-player-box dominant-player-light"
-                      style={{ aspectRatio: '16/10', maxHeight: '60vh', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      <img
-                        src={SLIDE_IMAGES[currentSlide]}
-                        alt={`Slide ${currentSlide + 1} - ${SLIDE_TOPICS[currentSlide]}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                      />
-
-                      <button
-                        onClick={() => setCurrentSlide((prev) => (prev > 0 ? prev - 1 : SLIDE_IMAGES.length - 1))}
-                        aria-label="Previous slide"
-                        style={{
-                          position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)',
-                          width: '2.5rem', height: '2.5rem', backgroundColor: 'rgba(255,255,255,0.92)',
-                          border: '1px solid #E2E8F0', color: '#0F172A',
-                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', zIndex: 10,
-                        }}
-                      >‹</button>
-
-                      <button
-                        onClick={() => setCurrentSlide((prev) => (prev < SLIDE_IMAGES.length - 1 ? prev + 1 : 0))}
-                        aria-label="Next slide"
-                        style={{
-                          position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)',
-                          width: '2.5rem', height: '2.5rem', backgroundColor: 'rgba(255,255,255,0.92)',
-                          border: '1px solid #E2E8F0', color: '#0F172A', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', zIndex: 10,
-                        }}
-                      >›</button>
-                    </div>
-
-                    {/* Unlocked 15-Slide Thumbnails Strip */}
-                    <div style={{ display: 'flex', gap: '0.45rem', overflowX: 'auto', marginTop: '0.75rem', paddingBottom: '0.35rem', alignItems: 'center' }}>
-                      {SLIDE_IMAGES.map((src, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentSlide(i)}
-                          title={`Slide ${i + 1}: ${SLIDE_TOPICS[i]}`}
-                          style={{
-                            width: '3.25rem', height: '2.1rem', flexShrink: 0,
-                            border: currentSlide === i ? '2px solid #0D9488' : '1px solid #E2E8F0',
-                            overflow: 'hidden', padding: 0, cursor: 'pointer', background: '#F1F5F9',
-                            opacity: currentSlide === i ? 1 : 0.72,
-                            borderRadius: '2px', transition: 'opacity 0.15s ease, border-color 0.15s ease',
-                          }}
-                        >
-                          <img src={src} alt={`Thumbnail ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </button>
-                      ))}
-                    </div>
-                  </MediaPhase>
-                )}
-              </AnimatePresence>
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: '1.5rem', maxWidth: '1100px', margin: '0 auto',
+              width: '100%', textAlign: 'center', padding: '1.5rem 1rem',
+            }}>
+              <FormatIcon type="slides" color="#2450C8" size={56} />
+              <h2 style={{
+                fontSize: 'clamp(1.75rem, 3.6vw, 2.75rem)',
+                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.22,
+              }}>
+                <WipeReveal
+                  text="Need a short version before cats or exams? Pata slides hapa."
+                  color="#1E40AF"
+                />
+              </h2>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem',
+            }}>
               <button onClick={prevPage} style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}>↑</button>
               <button onClick={nextPage} style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.35rem',
@@ -1232,9 +482,7 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* ═══════════════════════════════════════════════════════
-              PAGE 6 – Pick your unit
-          ═══════════════════════════════════════════════════════ */}
+          {/* ═══════════ PAGE 6 – Pick your unit ═══════════ */}
           <section className="fullpage-slide" key={`slide-5-${animKey}`}>
             <div style={{ marginBottom: '1.25rem' }}>
               <h2 className="anim-fade-in" style={{
@@ -1248,10 +496,14 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="unit-grid anim-fade-in" style={{
-              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '0.875rem', marginBottom: '1.5rem',
-            }}>
+            <div
+              className="unit-grid anim-fade-in"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '0.875rem', marginBottom: '1.5rem',
+              }}
+            >
               {UNITS.map((unit) => {
                 const slug = unit.code.toLowerCase().replace(/\s+/g, '');
                 return (
@@ -1287,13 +539,20 @@ export default function HomePage() {
               })}
             </div>
 
-            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '1.125rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button onClick={() => goToPage(0)} style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#1E40AF', cursor: 'pointer', fontWeight: 500 }}>
+            <div style={{
+              borderTop: '1px solid #E2E8F0', paddingTop: '1.125rem',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <button
+                onClick={() => goToPage(0)}
+                style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#1E40AF', cursor: 'pointer', fontWeight: 500 }}
+              >
                 ↑ Back to beginning
               </button>
               <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Plug Wa Notes · SOEN 2.1</span>
             </div>
           </section>
+
         </div>
       </div>
     </>

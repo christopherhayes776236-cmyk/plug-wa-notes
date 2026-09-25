@@ -157,6 +157,7 @@ export const UNITS: Unit[] = [
         name: 'Clean notes PDF',
         description: 'Scanned, typed, clean exam-focused notes.',
         price: 1,
+        // previewSrc intentionally omitted — no per-unit first-page image yet
       },
       {
         id: 'soen220-video',
@@ -164,6 +165,7 @@ export const UNITS: Unit[] = [
         name: 'Explainer video',
         description: 'Network packet flows, IP subnetting math, and routing explained.',
         price: 5,
+        previewSrc: '/media/video-overview.mp4',
       },
       {
         id: 'soen220-video-slides',
@@ -171,6 +173,11 @@ export const UNITS: Unit[] = [
         name: 'Video + slides pack',
         description: 'Full video walkthrough plus slide decks for quick revision.',
         price: 7,
+        previewSlides: [
+          '/media/slides/image1.png',
+          '/media/slides/image2.png',
+          '/media/slides/image3.png',
+        ],
       },
       {
         id: 'soen220-full-pack',
@@ -181,6 +188,7 @@ export const UNITS: Unit[] = [
       },
     ],
   },
+
   {
     code: 'SOEN 240',
     name: 'Object Oriented Programming Using Java I',

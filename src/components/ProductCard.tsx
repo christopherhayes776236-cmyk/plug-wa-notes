@@ -6,6 +6,7 @@ import { PriceTag } from './PriceTag';
 import { PhoneInput } from './PhoneInput';
 import { StatusBanner } from './StatusBanner';
 import { DownloadButton } from './DownloadButton';
+import { ProductPreview } from './ProductPreview';
 
 interface ProductCardProps {
   product: Product;
@@ -123,6 +124,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
           <p className="product-card-desc">{product.description}</p>
         </div>
         <PriceTag amount={product.price} variant={isBlue ? 'blue' : 'teal'} />
+      </div>
+
+      {/* Preview toggle — real assets for SOEN 220, disabled for others */}
+      <div style={{ paddingTop: '0.75rem' }}>
+        <ProductPreview
+          type={product.type}
+          previewSrc={product.previewSrc}
+          previewSlides={product.previewSlides}
+        />
       </div>
 
       {/* State section */}

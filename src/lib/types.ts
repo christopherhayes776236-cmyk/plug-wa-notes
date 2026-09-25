@@ -5,6 +5,10 @@ export interface Product {
   description: string;
   price: number;
   fileUrl?: string | null;
+  /** Real preview asset for tap-to-expand preview on unit pages */
+  previewSrc?: string;
+  /** 2–3 slide images for slides/videoSlides previews */
+  previewSlides?: string[];
 }
 
 export interface Unit {
