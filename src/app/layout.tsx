@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -39,18 +40,13 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
-        <link
-          rel="preload"
-          as="image"
-          href="https://res.cloudinary.com/nd4ofxfu/image/upload/v1789866745/plug-wa-notes/kid-study.gif"
-        />
-        {/* Preload critical priority notes video and slide 1 so it buffers during the 13s loader */}
-        <link rel="preload" as="video" href="/media/notes-overview.mp4" type="video/mp4" />
         <link rel="preload" as="image" href="/media/slides/image1.png" />
       </head>
       <body className="min-h-full flex flex-col bg-[#F6F4EF] text-[#23211E]">
         {children}
-        <script
+        <Script
+          id="sw-register"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {

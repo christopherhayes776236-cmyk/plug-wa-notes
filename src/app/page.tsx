@@ -87,12 +87,22 @@ export default function HomePage() {
   const router = useRouter();
 
   // ─── Media playback refs and states ──────────────────────────
+  const notesVideoRef = useRef<HTMLVideoElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [notesVideoPlaying, setNotesVideoPlaying] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
 
+  // ─── Slide deck state ────────────────────────────────────────
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const SLIDE_IMAGES = Array.from({ length: 15 }, (_, i) => `/media/slides/image${i + 1}.png`);
+
   useEffect(() => {
+    if (currentPage !== 1 && notesVideoRef.current && !notesVideoRef.current.paused) {
+      notesVideoRef.current.pause();
+      setNotesVideoPlaying(false);
+    }
     if (currentPage !== 2 && videoRef.current && !videoRef.current.paused) {
       videoRef.current.pause();
       setVideoPlaying(false);
@@ -105,7 +115,17 @@ export default function HomePage() {
 
   const isMediaTarget = (target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) return false;
-    return Boolean(target.closest('video, audio, #homepage-video-btn, #homepage-audio-btn'));
+    return Boolean(target.closest('video, audio, #homepage-video-btn, #homepage-audio-btn, #homepage-notes-video-btn, .slide-deck-container'));
+  };
+
+  const toggleNotesVideo = () => {
+    if (!notesVideoRef.current) return;
+    if (notesVideoRef.current.paused) {
+      notesVideoRef.current.play().then(() => setNotesVideoPlaying(true)).catch((e) => console.log('Notes video play error:', e));
+    } else {
+      notesVideoRef.current.pause();
+      setNotesVideoPlaying(false);
+    }
   };
 
   const toggleVideo = () => {
@@ -186,7 +206,7 @@ export default function HomePage() {
     const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('.unit-grid')) return;
-      if (isMediaTarget(target) || videoPlaying || audioPlaying) return;
+      if (isMediaTarget(target) || notesVideoPlaying || videoPlaying || audioPlaying) return;
       if (Math.abs(e.deltaY) > 28) {
         e.deltaY > 0 ? nextPage() : prevPage();
       }
@@ -194,6 +214,11 @@ export default function HomePage() {
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === ' ') {
+        if (currentPage === 1) {
+          e.preventDefault();
+          toggleNotesVideo();
+          return;
+        }
         if (currentPage === 2) {
           e.preventDefault();
           toggleVideo();
@@ -208,7 +233,7 @@ export default function HomePage() {
         nextPage();
         return;
       }
-      if (videoPlaying || audioPlaying) return;
+      if (notesVideoPlaying || videoPlaying || audioPlaying) return;
       if (e.key === 'ArrowDown' || e.key === 'PageDown') {
         e.preventDefault(); nextPage();
       } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
@@ -222,14 +247,14 @@ export default function HomePage() {
       window.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKey);
     };
-  }, [showLoader, nextPage, prevPage, currentPage, videoPlaying, audioPlaying]);
+  }, [showLoader, nextPage, prevPage, currentPage, notesVideoPlaying, videoPlaying, audioPlaying]);
 
   // ─── Touch ───────────────────────────────────────────────────
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartYRef.current = e.touches[0].clientY;
   };
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (isMediaTarget(e.target) || videoPlaying || audioPlaying) return;
+    if (isMediaTarget(e.target) || notesVideoPlaying || videoPlaying || audioPlaying) return;
     const deltaY = touchStartYRef.current - e.changedTouches[0].clientY;
     if (Math.abs(deltaY) > 42) deltaY > 0 ? nextPage() : prevPage();
   };
@@ -420,22 +445,67 @@ export default function HomePage() {
           </section>
 
           {/* ═══════════ PAGE 2 – Notes ═══════════ */}
-          <section className="fullpage-slide" key={`slide-1-${animKey}`}>
+          <section className="fullpage-slide" key="slide-1">
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: '1.5rem', maxWidth: '1100px', margin: '0 auto',
-              width: '100%', textAlign: 'center', padding: '1.5rem 1rem',
+              justifyContent: 'center', gap: '1.25rem', maxWidth: '750px', margin: '0 auto',
+              width: '100%', textAlign: 'center', padding: '1rem',
             }}>
-              <FormatIcon type="notes" color="#2450C8" size={56} />
+              <FormatIcon type="notes" color="#2450C8" size={48} />
               <h2 style={{
-                fontSize: 'clamp(1.75rem, 3.6vw, 2.75rem)',
-                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.22,
+                fontSize: 'clamp(1.4rem, 2.8vw, 2.25rem)',
+                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.25,
               }}>
                 <StaggerWords
                   text="Feeling behind in class? No stress - Pata notes hapa."
                   color="#1E40AF"
                 />
               </h2>
+
+              {/* Notes Video Player Card */}
+              <div style={{
+                width: '100%',
+                maxWidth: '520px',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                backgroundColor: '#0F172A',
+                position: 'relative',
+              }}>
+                <video
+                  ref={notesVideoRef}
+                  id="homepage-notes-video"
+                  src="/media/notes-overview.mp4"
+                  controls
+                  playsInline
+                  preload="metadata"
+                  onPlay={() => setNotesVideoPlaying(true)}
+                  onPause={() => setNotesVideoPlaying(false)}
+                  onEnded={() => setNotesVideoPlaying(false)}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  style={{ width: '100%', maxHeight: '280px', display: 'block' }}
+                />
+              </div>
+
+              <button
+                id="homepage-notes-video-btn"
+                onClick={toggleNotesVideo}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.5rem 1.25rem', borderRadius: '999px',
+                  backgroundColor: notesVideoPlaying ? '#F1F5F9' : '#1E40AF',
+                  color: notesVideoPlaying ? '#0F172A' : '#FFFFFF',
+                  fontSize: '0.8125rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                  transition: 'background-color 0.15s ease, transform 0.15s ease',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                }}
+              >
+                <span>{notesVideoPlaying ? 'Pause Notes ⏸' : 'Play Notes Video ▶'}</span>
+              </button>
             </div>
 
             <div style={{
@@ -609,22 +679,145 @@ export default function HomePage() {
           </section>
 
           {/* ═══════════ PAGE 5 – Slides ═══════════ */}
-          <section className="fullpage-slide" key={`slide-4-${animKey}`}>
+          <section className="fullpage-slide" key="slide-4">
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: '1.5rem', maxWidth: '1100px', margin: '0 auto',
-              width: '100%', textAlign: 'center', padding: '1.5rem 1rem',
+              justifyContent: 'center', gap: '1.25rem', maxWidth: '750px', margin: '0 auto',
+              width: '100%', textAlign: 'center', padding: '1rem',
             }}>
-              <FormatIcon type="slides" color="#2450C8" size={56} />
+              <FormatIcon type="slides" color="#2450C8" size={48} />
               <h2 style={{
-                fontSize: 'clamp(1.75rem, 3.6vw, 2.75rem)',
-                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.22,
+                fontSize: 'clamp(1.4rem, 2.8vw, 2.25rem)',
+                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.25,
               }}>
                 <WipeReveal
                   text="Need a short version before cats or exams? Pata slides hapa."
                   color="#1E40AF"
                 />
               </h2>
+
+              {/* Slide Deck Viewer */}
+              <div
+                className="slide-deck-container"
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+                onWheel={(e) => e.stopPropagation()}
+                style={{
+                  width: '100%',
+                  maxWidth: '520px',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                  backgroundColor: '#FFFFFF',
+                }}
+              >
+                {/* Header with pill counter and Prev / Next buttons */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.625rem 1rem',
+                  borderBottom: '1px solid #F1F5F9',
+                  backgroundColor: '#F8FAFC',
+                }}>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#0D9488',
+                    backgroundColor: '#F0FDFA',
+                    padding: '0.2rem 0.6rem',
+                    borderRadius: '999px',
+                    border: '1px solid #CCFBF1',
+                  }}>
+                    Slide {currentSlide + 1} of {SLIDE_IMAGES.length}
+                  </span>
+
+                  <div style={{ display: 'flex', gap: '0.35rem' }}>
+                    <button
+                      id="slide-deck-prev-btn"
+                      onClick={() => setCurrentSlide((prev) => (prev > 0 ? prev - 1 : SLIDE_IMAGES.length - 1))}
+                      style={{
+                        padding: '0.3rem 0.65rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: '#475569',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ← Prev
+                    </button>
+                    <button
+                      id="slide-deck-next-btn"
+                      onClick={() => setCurrentSlide((prev) => (prev < SLIDE_IMAGES.length - 1 ? prev + 1 : 0))}
+                      style={{
+                        padding: '0.3rem 0.65rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: '#FFFFFF',
+                        backgroundColor: '#0D9488',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+
+                {/* Main slide image view */}
+                <div style={{
+                  position: 'relative',
+                  aspectRatio: '16/9',
+                  backgroundColor: '#0F172A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <img
+                    id="homepage-slide-image"
+                    src={SLIDE_IMAGES[currentSlide]}
+                    alt={`Slide ${currentSlide + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                  />
+                </div>
+
+                {/* Horizontal thumbnail selector strip */}
+                <div style={{
+                  display: 'flex',
+                  gap: '0.4rem',
+                  overflowX: 'auto',
+                  padding: '0.5rem 0.75rem',
+                  backgroundColor: '#F8FAFC',
+                  borderTop: '1px solid #F1F5F9',
+                }}>
+                  {SLIDE_IMAGES.map((src, i) => (
+                    <button
+                      key={i}
+                      id={`slide-thumb-${i + 1}`}
+                      onClick={() => setCurrentSlide(i)}
+                      style={{
+                        flexShrink: 0,
+                        width: '44px',
+                        height: '26px',
+                        padding: 0,
+                        border: currentSlide === i ? '2px solid #0D9488' : '1px solid #E2E8F0',
+                        borderRadius: '3px',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        opacity: currentSlide === i ? 1 : 0.65,
+                        transition: 'opacity 0.15s ease',
+                      }}
+                    >
+                      <img src={src} alt={`Thumb ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div style={{
