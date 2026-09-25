@@ -54,8 +54,8 @@ export default function HomePage() {
       return;
     }
 
-    const COUNT_MS = 1000;
-    const HOLD_MS = 150;
+    const COUNT_MS = 1800;
+    const HOLD_MS = 200;
     const start = performance.now();
     let raf: number;
 
@@ -70,8 +70,8 @@ export default function HomePage() {
     };
     raf = requestAnimationFrame(tick);
 
-    // Hard cap — never trap user longer than 1.5s
-    const hardCap = setTimeout(() => setLoaderDone(true), 1500);
+    // Hard cap — never trap user longer than 2s
+    const hardCap = setTimeout(() => setLoaderDone(true), 2000);
 
     return () => {
       cancelAnimationFrame(raf);
@@ -266,38 +266,76 @@ export default function HomePage() {
         {showLoader && (
           <motion.div
             key="loader"
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             style={{
               position: 'fixed', inset: 0, zIndex: 9999,
               backgroundColor: '#F6F4EF',
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
-              gap: '0.75rem',
+              gap: '0.85rem',
             }}
           >
-            <div style={{
-              fontFamily: 'var(--font-display)', fontWeight: 600,
-              fontSize: '1.25rem', color: '#0F172A', letterSpacing: '-0.015em',
-            }}>
+            {/* Logo mark */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                fontFamily: 'var(--font-display)', fontWeight: 700,
+                fontSize: 'clamp(1.35rem, 4vw, 1.75rem)', color: '#0F172A',
+                letterSpacing: '-0.02em',
+              }}
+            >
               Plug Wa Notes
-            </div>
-            <div style={{
-              fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums',
-              fontWeight: 600, fontSize: '0.9375rem', color: '#1E40AF',
-            }}>
+            </motion.div>
+
+            {/* Tagline */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25, duration: 0.4 }}
+              style={{
+                fontSize: '0.8125rem', color: '#64748B',
+                fontFamily: 'var(--font-body)', letterSpacing: '0.01em',
+              }}
+            >
+              Loading your study materials…
+            </motion.div>
+
+            {/* Percent counter */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.3 }}
+              style={{
+                fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums',
+                fontWeight: 700, fontSize: '1rem', color: '#1E40AF',
+                minWidth: '3.5rem', textAlign: 'center',
+              }}
+            >
               {loadPercent}%
-            </div>
-            <div style={{
-              width: '140px', height: '3px',
-              backgroundColor: '#E2E8F0', borderRadius: '999px', overflow: 'hidden',
-            }}>
+            </motion.div>
+
+            {/* Progress bar */}
+            <motion.div
+              initial={{ opacity: 0, scaleX: 0 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              style={{
+                width: '180px', height: '4px',
+                backgroundColor: '#E2E8F0', borderRadius: '999px', overflow: 'hidden',
+              }}
+            >
               <div style={{
                 width: `${loadPercent}%`, height: '100%',
-                backgroundColor: '#1E40AF', borderRadius: '999px',
-                transition: 'width 0.05s linear',
+                background: 'linear-gradient(90deg, #1E40AF, #0D9488)',
+                borderRadius: '999px',
+                transition: 'width 0.06s linear',
               }} />
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -703,8 +741,8 @@ export default function HomePage() {
                 onTouchEnd={(e) => e.stopPropagation()}
                 onWheel={(e) => e.stopPropagation()}
                 style={{
-                  width: '100%',
-                  maxWidth: '520px',
+                  width: '95%',
+                  maxWidth: '640px',
                   borderRadius: '12px',
                   overflow: 'hidden',
                   border: '1px solid #E2E8F0',
@@ -773,6 +811,7 @@ export default function HomePage() {
                 <div style={{
                   position: 'relative',
                   aspectRatio: '16/9',
+                  minHeight: '180px',
                   backgroundColor: '#0F172A',
                   display: 'flex',
                   alignItems: 'center',
@@ -802,8 +841,8 @@ export default function HomePage() {
                       onClick={() => setCurrentSlide(i)}
                       style={{
                         flexShrink: 0,
-                        width: '44px',
-                        height: '26px',
+                        width: '56px',
+                        height: '36px',
                         padding: 0,
                         border: currentSlide === i ? '2px solid #0D9488' : '1px solid #E2E8F0',
                         borderRadius: '3px',
