@@ -103,6 +103,11 @@ export default function HomePage() {
     }
   }, [currentPage]);
 
+  const isMediaTarget = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
+    return Boolean(target.closest('video, audio, #homepage-video-btn, #homepage-audio-btn'));
+  };
+
   const toggleVideo = () => {
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
@@ -181,13 +186,30 @@ export default function HomePage() {
     const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('.unit-grid')) return;
+      if (isMediaTarget(target) || videoPlaying || audioPlaying) return;
       if (Math.abs(e.deltaY) > 28) {
         e.deltaY > 0 ? nextPage() : prevPage();
       }
     };
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+      if (e.key === ' ') {
+        if (currentPage === 2) {
+          e.preventDefault();
+          toggleVideo();
+          return;
+        }
+        if (currentPage === 3) {
+          e.preventDefault();
+          toggleAudio();
+          return;
+        }
+        e.preventDefault();
+        nextPage();
+        return;
+      }
+      if (videoPlaying || audioPlaying) return;
+      if (e.key === 'ArrowDown' || e.key === 'PageDown') {
         e.preventDefault(); nextPage();
       } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
         e.preventDefault(); prevPage();
@@ -200,13 +222,14 @@ export default function HomePage() {
       window.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKey);
     };
-  }, [showLoader, nextPage, prevPage]);
+  }, [showLoader, nextPage, prevPage, currentPage, videoPlaying, audioPlaying]);
 
   // ─── Touch ───────────────────────────────────────────────────
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartYRef.current = e.touches[0].clientY;
   };
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (isMediaTarget(e.target) || videoPlaying || audioPlaying) return;
     const deltaY = touchStartYRef.current - e.changedTouches[0].clientY;
     if (Math.abs(deltaY) > 42) deltaY > 0 ? nextPage() : prevPage();
   };
@@ -428,7 +451,7 @@ export default function HomePage() {
           </section>
 
           {/* ═══════════ PAGE 3 – Video ═══════════ */}
-          <section className="fullpage-slide" key={`slide-2-${animKey}`}>
+          <section className="fullpage-slide" key="slide-2">
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
               justifyContent: 'center', gap: '1.25rem', maxWidth: '750px', margin: '0 auto',
@@ -466,6 +489,8 @@ export default function HomePage() {
                   onPlay={() => setVideoPlaying(true)}
                   onPause={() => setVideoPlaying(false)}
                   onEnded={() => setVideoPlaying(false)}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
                   style={{ width: '100%', maxHeight: '280px', display: 'block' }}
                 />
               </div>
@@ -473,6 +498,8 @@ export default function HomePage() {
               <button
                 id="homepage-video-btn"
                 onClick={toggleVideo}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                   padding: '0.5rem 1.25rem', borderRadius: '999px',
@@ -500,7 +527,7 @@ export default function HomePage() {
           </section>
 
           {/* ═══════════ PAGE 4 – Audio (typewriter) ═══════════ */}
-          <section className="fullpage-slide" key={`slide-3-${animKey}`}>
+          <section className="fullpage-slide" key="slide-3">
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
               justifyContent: 'center', gap: '1.25rem', maxWidth: '750px', margin: '0 auto',
@@ -541,6 +568,8 @@ export default function HomePage() {
                   onPlay={() => setAudioPlaying(true)}
                   onPause={() => setAudioPlaying(false)}
                   onEnded={() => setAudioPlaying(false)}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
                   style={{ width: '100%', height: '44px' }}
                 >
                   <source src="/media/audio-highlight.mp3" type="audio/mpeg" />
@@ -551,6 +580,8 @@ export default function HomePage() {
                 <button
                   id="homepage-audio-btn"
                   onClick={toggleAudio}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                     padding: '0.5rem 1.25rem', borderRadius: '999px',
