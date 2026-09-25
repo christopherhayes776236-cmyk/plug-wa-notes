@@ -86,6 +86,43 @@ export default function HomePage() {
   const [animKey, setAnimKey] = useState(0);
   const router = useRouter();
 
+  // ─── Media playback refs and states ──────────────────────────
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+
+  useEffect(() => {
+    if (currentPage !== 2 && videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+      setVideoPlaying(false);
+    }
+    if (currentPage !== 3 && audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+      setAudioPlaying(false);
+    }
+  }, [currentPage]);
+
+  const toggleVideo = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play().then(() => setVideoPlaying(true)).catch((e) => console.log('Video play error:', e));
+    } else {
+      videoRef.current.pause();
+      setVideoPlaying(false);
+    }
+  };
+
+  const toggleAudio = () => {
+    if (!audioRef.current) return;
+    if (audioRef.current.paused) {
+      audioRef.current.play().then(() => setAudioPlaying(true)).catch((e) => console.log('Audio play error:', e));
+    } else {
+      audioRef.current.pause();
+      setAudioPlaying(false);
+    }
+  };
+
   // ─── Typewriter for audio page ───────────────────────────────
   const [typedAudioText, setTypedAudioText] = useState('');
   const [typingComplete, setTypingComplete] = useState(false);
@@ -394,19 +431,60 @@ export default function HomePage() {
           <section className="fullpage-slide" key={`slide-2-${animKey}`}>
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: '1.5rem', maxWidth: '1100px', margin: '0 auto',
-              width: '100%', textAlign: 'center', padding: '1.5rem 1rem',
+              justifyContent: 'center', gap: '1.25rem', maxWidth: '750px', margin: '0 auto',
+              width: '100%', textAlign: 'center', padding: '1rem',
             }}>
-              <FormatIcon type="video" color="#157F72" size={56} />
+              <FormatIcon type="video" color="#157F72" size={48} />
               <h2 style={{
-                fontSize: 'clamp(1.75rem, 3.6vw, 2.75rem)',
-                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.22,
+                fontSize: 'clamp(1.4rem, 2.8vw, 2.25rem)',
+                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.25,
               }}>
                 <ConvergeLetters
                   text="Some units just make more sense in visuals - Pata video review hapa ndani."
                   color="#0D9488"
                 />
               </h2>
+
+              {/* Video Player Card */}
+              <div style={{
+                width: '100%',
+                maxWidth: '520px',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                backgroundColor: '#0F172A',
+                position: 'relative',
+              }}>
+                <video
+                  ref={videoRef}
+                  id="homepage-video"
+                  src="/media/video-overview.mp4"
+                  controls
+                  playsInline
+                  preload="metadata"
+                  onPlay={() => setVideoPlaying(true)}
+                  onPause={() => setVideoPlaying(false)}
+                  onEnded={() => setVideoPlaying(false)}
+                  style={{ width: '100%', maxHeight: '280px', display: 'block' }}
+                />
+              </div>
+
+              <button
+                id="homepage-video-btn"
+                onClick={toggleVideo}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.5rem 1.25rem', borderRadius: '999px',
+                  backgroundColor: videoPlaying ? '#F1F5F9' : '#0D9488',
+                  color: videoPlaying ? '#0F172A' : '#FFFFFF',
+                  fontSize: '0.8125rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                  transition: 'background-color 0.15s ease, transform 0.15s ease',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                }}
+              >
+                <span>{videoPlaying ? 'Pause Video ⏸' : 'Play Explainer Video ▶'}</span>
+              </button>
             </div>
 
             <div style={{
@@ -425,18 +503,66 @@ export default function HomePage() {
           <section className="fullpage-slide" key={`slide-3-${animKey}`}>
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: '1.5rem', maxWidth: '1100px', margin: '0 auto',
-              width: '100%', textAlign: 'center', padding: '1.5rem 1rem',
+              justifyContent: 'center', gap: '1.25rem', maxWidth: '750px', margin: '0 auto',
+              width: '100%', textAlign: 'center', padding: '1rem',
             }}>
-              <FormatIcon type="audio" color="#157F72" size={56} />
+              <FormatIcon type="audio" color="#157F72" size={48} />
               <h2 style={{
-                fontSize: 'clamp(1.5rem, 3.2vw, 2.5rem)',
+                fontSize: 'clamp(1.2rem, 2.5vw, 1.85rem)',
                 fontFamily: 'var(--font-display)', fontWeight: 500, color: '#1E40AF',
-                lineHeight: 1.28, minHeight: '4.5rem',
+                lineHeight: 1.3, minHeight: '3.5rem',
               }}>
                 &ldquo;{typedAudioText}&rdquo;
                 {!typingComplete && <span className="typewriter-cursor" />}
               </h2>
+
+              {/* Audio Player Card */}
+              <div style={{
+                width: '100%',
+                maxWidth: '460px',
+                padding: '1.25rem 1.5rem',
+                borderRadius: '12px',
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 6px 24px rgba(0,0,0,0.06)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.85rem',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1E40AF', fontSize: '0.8125rem', fontWeight: 600 }}>
+                  <span>🎧 Audio Overview Preview (20s)</span>
+                </div>
+                <audio
+                  ref={audioRef}
+                  id="homepage-audio"
+                  controls
+                  preload="metadata"
+                  onPlay={() => setAudioPlaying(true)}
+                  onPause={() => setAudioPlaying(false)}
+                  onEnded={() => setAudioPlaying(false)}
+                  style={{ width: '100%', height: '44px' }}
+                >
+                  <source src="/media/audio-highlight.mp3" type="audio/mpeg" />
+                  <source src="/media/audio-highlight.m4a" type="audio/mp4" />
+                  Your browser does not support the audio element.
+                </audio>
+
+                <button
+                  id="homepage-audio-btn"
+                  onClick={toggleAudio}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.5rem 1.25rem', borderRadius: '999px',
+                    backgroundColor: audioPlaying ? '#F1F5F9' : '#1E40AF',
+                    color: audioPlaying ? '#0F172A' : '#FFFFFF',
+                    fontSize: '0.8125rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                    transition: 'background-color 0.15s ease, transform 0.15s ease',
+                  }}
+                >
+                  <span>{audioPlaying ? 'Pause Audio ⏸' : 'Play Audio Overview ▶'}</span>
+                </button>
+              </div>
             </div>
 
             <div style={{
