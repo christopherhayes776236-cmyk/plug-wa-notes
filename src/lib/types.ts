@@ -4,11 +4,16 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  thumbnailSrc: string;
   fileUrl?: string | null;
-  /** Real preview asset for tap-to-expand preview on unit pages */
   previewSrc?: string;
-  /** 2–3 slide images for slides/videoSlides previews */
   previewSlides?: string[];
+}
+
+export interface WeekSection {
+  id: string;
+  title: string;
+  products: Product[];
 }
 
 export interface Unit {
@@ -16,7 +21,7 @@ export interface Unit {
   name: string;
   description: string;
   lecturer?: string;
-  products: Product[];
+  sections: WeekSection[];
 }
 
 export interface Order {
@@ -24,6 +29,7 @@ export interface Order {
   orderId: string;
   unitCode: string;
   productType: string;
+  productId?: string;
   phone: string;
   amount: number;
   status: 'pending' | 'paid' | 'failed' | 'cancelled';

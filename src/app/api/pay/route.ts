@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUnitByCode } from '@/lib/data';
+import { findProduct, getUnitByCode } from '@/lib/data';
 import { initiateStkPush } from '@/lib/mpesa';
 import { saveOrder } from '@/lib/ordersStore';
 
@@ -30,30 +30,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
-    const { phone, unitCode, productType } = body;
-
-    if (!phone || !unitCode || !productType) {
+    if (!process.env.MPESA_CONSUMER_KEY || !process.env.MPESA_CONSUMER_SECRET) {
       return NextResponse.json(
-        { error: 'Missing phone, unitCode, or productType.' },
+        { error: 'M-Pesa is not connected yet. Payment keys will be added soon.' },
+        { status: 503 }
+      );
+    }
+
+    const body = await req.json();
+    const { phone, unitCode, productId, productType } = body;
+
+    if (!phone || !unitCode || (!productId && !productType)) {
+      return NextResponse.json(
+        { error: 'Missing phone, unitCode, or productId.' },
         { status: 400 }
       );
     }
 
-    // Lookup unit and product price
     const unit = getUnitByCode(unitCode);
     if (!unit) {
       return NextResponse.json({ error: 'Unit not found.' }, { status: 404 });
     }
 
-    const product = unit.products.find((p) => p.type === productType);
+    const product = findProduct(unit, { productId, productType });
     if (!product) {
-      return NextResponse.json({ error: 'Product type not found.' }, { status: 404 });
+      return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
     }
 
     const orderId = `PWN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    // Initiate STK Push via Daraja
     const stkResult = await initiateStkPush({
       phone,
       amount: product.price,
@@ -61,12 +66,12 @@ export async function POST(req: NextRequest) {
       description: `${unit.code} ${product.name}`.slice(0, 30),
     });
 
-    // Save pending order
     await saveOrder({
       id: orderId,
       orderId,
       unitCode: unit.code,
       productType: product.type,
+      productId: product.id,
       phone,
       amount: product.price,
       status: 'pending',
@@ -80,11 +85,9 @@ export async function POST(req: NextRequest) {
       checkoutRequestId: stkResult.checkoutRequestId,
       message: stkResult.customerMessage,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Payment initiation error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Payment initiation failed.' },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Payment initiation failed.';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

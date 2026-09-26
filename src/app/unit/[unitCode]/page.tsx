@@ -26,7 +26,6 @@ export default async function UnitPage({ params }: UnitPageProps) {
 
   return (
     <div className="page-shell">
-      {/* Sticky mini header: Back link and unit code */}
       <header style={{
         position: 'sticky',
         top: 0,
@@ -55,7 +54,6 @@ export default async function UnitPage({ params }: UnitPageProps) {
         </span>
       </header>
 
-      {/* Unit description (1-2 sentences) */}
       <section style={{ marginBottom: '1.75rem' }}>
         <h1 className="unit-detail-name" style={{ fontSize: '1.375rem', marginBottom: '0.5rem' }}>
           {unit.name}
@@ -65,18 +63,27 @@ export default async function UnitPage({ params }: UnitPageProps) {
             {unit.description}
           </p>
         )}
+        {unit.lecturer && (
+          <p className="unit-detail-lecturer">{unit.lecturer}</p>
+        )}
       </section>
 
-      {/* Stack of 4 product cards in fixed order */}
-      <section>
-        <div className="products-stack">
-          {unit.products.map((product) => (
-            <ProductCard key={product.id} product={product} unitCode={unit.code} />
-          ))}
-        </div>
-      </section>
+      {unit.sections.map((section) => (
+        <section key={section.id} className="week-section">
+          <div className="week-section-header">
+            <h2 className="week-section-title">{section.title}</h2>
+            <p className="week-section-sub">
+              First batch for this unit — notes, explainer video, slides, and full pack.
+            </p>
+          </div>
+          <div className="products-stack">
+            {section.products.map((product) => (
+              <ProductCard key={product.id} product={product} unitCode={unit.code} />
+            ))}
+          </div>
+        </section>
+      ))}
 
-      {/* Re-download & delivery notice */}
       <section style={{
         marginTop: '1.75rem',
         padding: '0.875rem 1rem',

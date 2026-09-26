@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrder, updateOrderStatus } from '@/lib/ordersStore';
 import { queryStkStatus } from '@/lib/mpesa';
-import { getUnitByCode } from '@/lib/data';
+import { findProduct, getUnitByCode } from '@/lib/data';
 import { getProductDownloadUrl } from '@/lib/cloudinary';
 
 export async function GET(
@@ -38,7 +38,9 @@ export async function GET(
         if (queryRes.resultCode === '0') {
           // Success verified
           const unit = getUnitByCode(order.unitCode);
-          const product = unit?.products.find((p) => p.type === order.productType);
+          const product = unit
+            ? findProduct(unit, { productId: order.productId, productType: order.productType })
+            : undefined;
           const downloadUrl = getProductDownloadUrl(order.unitCode, order.productType, product?.fileUrl);
 
           await updateOrderStatus(orderId, 'paid', downloadUrl);
@@ -82,7 +84,9 @@ export async function GET(
       orderAgeMs > 6000
     ) {
       const unit = getUnitByCode(order.unitCode);
-      const product = unit?.products.find((p) => p.type === order.productType);
+      const product = unit
+        ? findProduct(unit, { productId: order.productId, productType: order.productType })
+        : undefined;
       const testDownloadUrl = getProductDownloadUrl(order.unitCode, order.productType, product?.fileUrl);
 
       await updateOrderStatus(orderId, 'paid', testDownloadUrl);

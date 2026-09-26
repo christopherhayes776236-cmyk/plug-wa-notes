@@ -6,7 +6,6 @@ import { PriceTag } from './PriceTag';
 import { PhoneInput } from './PhoneInput';
 import { StatusBanner } from './StatusBanner';
 import { DownloadButton } from './DownloadButton';
-import { ProductPreview } from './ProductPreview';
 
 interface ProductCardProps {
   product: Product;
@@ -62,7 +61,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
       const res = await fetch('/api/pay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, unitCode, productType: product.type }),
+        body: JSON.stringify({
+          phone,
+          unitCode,
+          productId: product.id,
+          productType: product.type,
+        }),
       });
 
       const data = await res.json();
@@ -71,8 +75,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
       setOrderId(data.orderId);
       setState('waiting');
       startPolling(data.orderId);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Could not connect to payment gateway. Please try again.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Could not connect to payment gateway. Please try again.';
+      setErrorMessage(message);
       setState('failed');
     } finally {
       setIsSubmitting(false);
@@ -107,7 +112,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
           setState('failed');
           setErrorMessage(data.message || 'Payment was cancelled or could not be verified.');
         }
-      } catch (e) {
+      } catch {
         // Continue polling silently
       }
     }, 2500);
@@ -117,131 +122,131 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
 
   return (
     <div className="product-card">
-      {/* Header */}
-      <div className="product-card-top">
-        <div>
-          <p className="product-card-title">{product.name}</p>
-          <p className="product-card-desc">{product.description}</p>
-        </div>
-        <PriceTag amount={product.price} variant={isBlue ? 'blue' : 'teal'} />
-      </div>
-
-      {/* Preview toggle — real assets for SOEN 220, disabled for others */}
-      <div style={{ paddingTop: '0.75rem' }}>
-        <ProductPreview
-          type={product.type}
-          previewSrc={product.previewSrc}
-          previewSlides={product.previewSlides}
+      <div className="product-card-thumb">
+        <img
+          src={product.thumbnailSrc}
+          alt={`${product.name} cover`}
+          width={640}
+          height={360}
+          loading="lazy"
         />
       </div>
 
-      {/* State section */}
-      <div className="product-card-action" style={{ borderTop: '1px solid rgba(222, 218, 208, 0.6)', paddingTop: '1rem' }}>
+      <div className="product-card-body">
+        <div className="product-card-top">
+          <div>
+            <p className="product-card-title">{product.name}</p>
+            <p className="product-card-desc">{product.description}</p>
+          </div>
+          <PriceTag amount={product.price} variant={isBlue ? 'blue' : 'teal'} />
+        </div>
 
-        {state === 'idle' && (
-          <button
-            className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
-            onClick={() => setState('entering_phone')}
-          >
-            Buy — KSH {product.price}
-          </button>
-        )}
-
-        {state === 'entering_phone' && (
-          <form onSubmit={handleInitiatePayment} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <PhoneInput
-              value={phone}
-              onChange={(val) => { setPhone(val); if (phoneError) setPhoneError(''); }}
-              error={phoneError}
-              disabled={isSubmitting}
-            />
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => { setState('idle'); setPhoneError(''); setErrorMessage(''); }}
-                disabled={isSubmitting}
-                style={{
-                  flex: 1,
-                  padding: '0.625rem',
-                  background: 'transparent',
-                  border: '1px solid var(--line)',
-                  color: 'var(--ink-muted)',
-                  fontSize: '0.8125rem',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
-                style={{ flex: 2 }}
-              >
-                {isSubmitting ? 'Sending STK...' : `Pay KSH ${product.price}`}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {state === 'waiting' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <StatusBanner status="waiting" phone={phone} />
+        <div className="product-card-action">
+          {state === 'idle' && (
             <button
-              onClick={() => { stopPolling(); setState('idle'); }}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--line)',
-                color: 'var(--ink-muted)',
-                fontSize: '0.75rem',
-                padding: '0.5rem',
-                cursor: 'pointer',
-              }}
+              className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
+              onClick={() => setState('entering_phone')}
             >
-              Cancel Payment Waiting
+              Buy — KSH {product.price}
             </button>
-          </div>
-        )}
+          )}
 
-        {state === 'paid' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <StatusBanner status="paid" />
-            <DownloadButton
-              fileUrl={downloadUrl}
-              fileName={`${unitCode.toLowerCase().replace(/\s+/g, '-')}-${product.type}`}
-              productName={product.name}
-            />
-          </div>
-        )}
+          {state === 'entering_phone' && (
+            <form onSubmit={handleInitiatePayment} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <PhoneInput
+                value={phone}
+                onChange={(val) => { setPhone(val); if (phoneError) setPhoneError(''); }}
+                error={phoneError}
+                disabled={isSubmitting}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => { setState('idle'); setPhoneError(''); setErrorMessage(''); }}
+                  disabled={isSubmitting}
+                  style={{
+                    flex: 1,
+                    padding: '0.625rem',
+                    background: 'transparent',
+                    border: '1px solid var(--line)',
+                    color: 'var(--ink-muted)',
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
+                  style={{ flex: 2 }}
+                >
+                  {isSubmitting ? 'Sending STK...' : `Pay KSH ${product.price}`}
+                </button>
+              </div>
+            </form>
+          )}
 
-        {(state === 'failed' || state === 'timeout') && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <StatusBanner status={state} message={errorMessage} />
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {state === 'waiting' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <StatusBanner status="waiting" phone={phone} />
               <button
-                onClick={() => setState('idle')}
+                onClick={() => { stopPolling(); setState('idle'); }}
                 style={{
-                  flex: 1,
-                  padding: '0.5rem',
                   background: 'transparent',
                   border: '1px solid var(--line)',
                   color: 'var(--ink-muted)',
                   fontSize: '0.75rem',
+                  padding: '0.5rem',
                   cursor: 'pointer',
                 }}
               >
-                Close
-              </button>
-              <button
-                onClick={() => { stopPolling(); setState('entering_phone'); setErrorMessage(''); }}
-                className="btn-buy"
-                style={{ flex: 2, padding: '0.5rem' }}
-              >
-                Try Again
+                Cancel Payment Waiting
               </button>
             </div>
-          </div>
-        )}
+          )}
+
+          {state === 'paid' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <StatusBanner status="paid" />
+              <DownloadButton
+                fileUrl={downloadUrl}
+                fileName={`${unitCode.toLowerCase().replace(/\s+/g, '-')}-${product.type}`}
+                productName={product.name}
+              />
+            </div>
+          )}
+
+          {(state === 'failed' || state === 'timeout') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <StatusBanner status={state} message={errorMessage} />
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={() => setState('idle')}
+                  style={{
+                    flex: 1,
+                    padding: '0.5rem',
+                    background: 'transparent',
+                    border: '1px solid var(--line)',
+                    color: 'var(--ink-muted)',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => { stopPolling(); setState('entering_phone'); setErrorMessage(''); }}
+                  className="btn-buy"
+                  style={{ flex: 2, padding: '0.5rem' }}
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

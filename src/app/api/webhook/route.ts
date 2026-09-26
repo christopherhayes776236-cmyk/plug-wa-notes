@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrder, getOrderByCheckoutRequestId, updateOrderStatus } from '@/lib/ordersStore';
-import { getUnitByCode } from '@/lib/data';
+import { findProduct, getUnitByCode } from '@/lib/data';
 import { getProductDownloadUrl } from '@/lib/cloudinary';
 
 export async function POST(req: NextRequest) {
@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
       const order = await getOrderByCheckoutRequestId(CheckoutRequestID);
       if (order) {
         const unit = getUnitByCode(order.unitCode);
-        const product = unit?.products.find((p) => p.type === order.productType);
+        const product = unit
+          ? findProduct(unit, { productId: order.productId, productType: order.productType })
+          : undefined;
         const downloadUrl = getProductDownloadUrl(order.unitCode, order.productType, product?.fileUrl);
 
         await updateOrderStatus(order.orderId, 'paid', downloadUrl);
