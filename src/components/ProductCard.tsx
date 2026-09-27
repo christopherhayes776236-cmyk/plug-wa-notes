@@ -267,11 +267,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
           {state === 'paid' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <StatusBanner status="paid" />
-              <DownloadButton
-                fileUrl={downloadUrl || getProductRealDownloadUrl()}
-                fileName={getProductFileName()}
-                productName={product.name}
-              />
+              {product.files && product.files.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink)' }}>
+                    Your pack is ready ({product.files.length} items):
+                  </div>
+                  {product.files.map((file, idx) => (
+                    <DownloadButton
+                      key={idx}
+                      fileUrl={file.fileUrl}
+                      fileName={file.fileName}
+                      productName={file.name}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <DownloadButton
+                  fileUrl={downloadUrl || getProductRealDownloadUrl()}
+                  fileName={getProductFileName()}
+                  productName={product.name}
+                />
+              )}
             </div>
           )}
 

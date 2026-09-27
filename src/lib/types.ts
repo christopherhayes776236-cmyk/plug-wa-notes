@@ -1,3 +1,10 @@
+export interface ProductFileItem {
+  name: string;
+  fileUrl: string;
+  fileName: string;
+  type: 'notes' | 'slides' | 'audio' | 'video';
+}
+
 export interface Product {
   id: string;
   type: 'notes' | 'video' | 'audio' | 'videoSlides' | 'fullPack';
@@ -6,9 +13,11 @@ export interface Product {
   price: number;
   thumbnailSrc: string;
   fileUrl?: string | null;
+  files?: ProductFileItem[];
   previewSrc?: string;
   previewSlides?: string[];
 }
+
 
 export interface WeekSection {
   id: string;

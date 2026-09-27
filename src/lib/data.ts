@@ -17,7 +17,7 @@ function week13Products(
       description: 'Typed, exam-focused notes for weeks 1–3.',
       price: 1,
       thumbnailSrc: thumb(`${prefix}-notes`),
-      fileUrl: `/notes/${prefix}-notes.pdf`,
+      fileUrl: `/units/${prefix}/notes.pdf`,
     },
   ];
 
@@ -30,7 +30,7 @@ function week13Products(
       description: 'Audio highlight breakdown for learning on the go.',
       price: 3,
       thumbnailSrc: thumb(`${prefix}-video`),
-      fileUrl: '/media/audio-highlight.mp3',
+      fileUrl: `/units/${prefix}/audio.m4a`,
     },
     {
       id: `${prefix}-video`,
@@ -39,7 +39,7 @@ function week13Products(
       description: videoDescription,
       price: 5,
       thumbnailSrc: thumb(`${prefix}-video`),
-      fileUrl: '/media/video-overview.mp4',
+      fileUrl: `/units/${prefix}/video.mp4`,
     },
     {
       id: `${prefix}-video-slides`,
@@ -48,7 +48,21 @@ function week13Products(
       description: 'Full video walkthrough plus slide decks for quick revision.',
       price: 7,
       thumbnailSrc: thumb(`${prefix}-video-slides`),
-      fileUrl: '/media/video-overview.mp4',
+      fileUrl: `/units/${prefix}/video.mp4`,
+      files: [
+        {
+          name: 'Explainer Video (MP4)',
+          fileUrl: `/units/${prefix}/video.mp4`,
+          fileName: `${prefix}-explainer-video.mp4`,
+          type: 'video',
+        },
+        {
+          name: 'Slide Deck / Blueprint (PDF)',
+          fileUrl: `/units/${prefix}/slides.pdf`,
+          fileName: `${prefix}-slides.pdf`,
+          type: 'slides',
+        },
+      ],
     },
     {
       id: `${prefix}-full-pack`,
@@ -57,7 +71,33 @@ function week13Products(
       description: 'All notes, explainer video, slides, and reference diagrams.',
       price: 10,
       thumbnailSrc: thumb(`${prefix}-full-pack`),
-      fileUrl: `/notes/${prefix}-notes.pdf`,
+      fileUrl: `/units/${prefix}/notes.pdf`,
+      files: [
+        {
+          name: 'Exam Notes (PDF)',
+          fileUrl: `/units/${prefix}/notes.pdf`,
+          fileName: `${prefix}-notes.pdf`,
+          type: 'notes',
+        },
+        {
+          name: 'Slide Deck / Blueprint (PDF)',
+          fileUrl: `/units/${prefix}/slides.pdf`,
+          fileName: `${prefix}-slides.pdf`,
+          type: 'slides',
+        },
+        {
+          name: 'Audio Breakdown (M4A)',
+          fileUrl: `/units/${prefix}/audio.m4a`,
+          fileName: `${prefix}-audio-breakdown.m4a`,
+          type: 'audio',
+        },
+        {
+          name: 'Explainer Video (MP4)',
+          fileUrl: `/units/${prefix}/video.mp4`,
+          fileName: `${prefix}-explainer-video.mp4`,
+          type: 'video',
+        },
+      ],
     },
   ];
 }
@@ -130,7 +170,7 @@ export const UNITS: Unit[] = [
             description: 'Typed notes covering data communication fundamentals for weeks 1–2.',
             price: 1,
             thumbnailSrc: thumb('soen220-notes-w12'),
-            fileUrl: '/notes/soen220-notes-w12.pdf',
+            fileUrl: '/units/soen220/notes-w12.pdf',
           },
           {
             id: 'soen220-notes-w3',
@@ -139,7 +179,7 @@ export const UNITS: Unit[] = [
             description: 'Network topology notes for week 3.',
             price: 1,
             thumbnailSrc: thumb('soen220-notes-w3'),
-            fileUrl: '/notes/soen220-notes-w3.pdf',
+            fileUrl: '/units/soen220/notes-w3.pdf',
           },
         ])
       ),
