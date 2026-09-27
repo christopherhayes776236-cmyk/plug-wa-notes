@@ -120,6 +120,41 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
 
   const isBlue = product.type === 'notes' || product.type === 'videoSlides';
 
+  const getProductRealDownloadUrl = () => {
+    if (product.fileUrl) return product.fileUrl;
+    if (product.type === 'notes') {
+      return `/notes/${product.id}.pdf`;
+    }
+    if (product.type === 'audio') {
+      return '/media/audio-highlight.mp3';
+    }
+    if (product.type === 'video' || product.type === 'videoSlides') {
+      return '/media/video-overview.mp4';
+    }
+    if (product.type === 'fullPack') {
+      const cleanPrefix = product.id.replace('-full-pack', '');
+      return `/notes/${cleanPrefix}-notes.pdf`;
+    }
+    return `/notes/${product.id}.pdf`;
+  };
+
+  const getProductFileName = () => {
+    const cleanUnit = unitCode.toLowerCase().replace(/\s+/g, '-');
+    if (product.type === 'audio') {
+      return `${cleanUnit}-audio-overview.mp3`;
+    }
+    if (product.type === 'video') {
+      return `${cleanUnit}-explainer-video.mp4`;
+    }
+    if (product.type === 'videoSlides') {
+      return `${cleanUnit}-video-slides.mp4`;
+    }
+    if (product.type === 'fullPack') {
+      return `${cleanUnit}-complete-study-pack.pdf`;
+    }
+    return `${product.id}.pdf`;
+  };
+
   return (
     <div className="product-card">
       <div className="product-card-thumb">
@@ -153,7 +188,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
               <button
                 type="button"
                 onClick={() => {
-                  setDownloadUrl(product.fileUrl || '/media/sample-notes.pdf');
+                  setDownloadUrl(getProductRealDownloadUrl());
                   setState('paid');
                 }}
                 style={{
@@ -233,8 +268,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <StatusBanner status="paid" />
               <DownloadButton
-                fileUrl={downloadUrl}
-                fileName={`${unitCode.toLowerCase().replace(/\s+/g, '-')}-${product.type}.pdf`}
+                fileUrl={downloadUrl || getProductRealDownloadUrl()}
+                fileName={getProductFileName()}
                 productName={product.name}
               />
             </div>

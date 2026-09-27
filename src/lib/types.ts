@@ -1,6 +1,6 @@
 export interface Product {
   id: string;
-  type: 'notes' | 'video' | 'videoSlides' | 'fullPack';
+  type: 'notes' | 'video' | 'audio' | 'videoSlides' | 'fullPack';
   name: string;
   description: string;
   price: number;

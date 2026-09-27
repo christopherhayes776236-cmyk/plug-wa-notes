@@ -27,8 +27,10 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
     const link = document.createElement('a');
     link.href = finalUrl;
     link.download = fileName || 'plug-wa-notes-study-material';
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
+    if (finalUrl.startsWith('http') && typeof window !== 'undefined' && !finalUrl.includes(window.location.hostname)) {
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+    }
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
