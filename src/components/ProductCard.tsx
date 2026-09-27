@@ -143,12 +143,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
 
         <div className="product-card-action">
           {state === 'idle' && (
-            <button
-              className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
-              onClick={() => setState('entering_phone')}
-            >
-              Buy — KSH {product.price}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
+              <button
+                className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
+                onClick={() => setState('entering_phone')}
+              >
+                Buy — KSH {product.price}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDownloadUrl(product.fileUrl || '/media/sample-notes.pdf');
+                  setState('paid');
+                }}
+                style={{
+                  background: '#FEF3C7',
+                  border: '1px dashed #D97706',
+                  color: '#92400E',
+                  fontSize: '0.75rem',
+                  padding: '0.4rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  width: '100%',
+                }}
+              >
+                ⚡ Test Download (Bypass Payment)
+              </button>
+            </div>
           )}
 
           {state === 'entering_phone' && (
@@ -212,7 +234,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
               <StatusBanner status="paid" />
               <DownloadButton
                 fileUrl={downloadUrl}
-                fileName={`${unitCode.toLowerCase().replace(/\s+/g, '-')}-${product.type}`}
+                fileName={`${unitCode.toLowerCase().replace(/\s+/g, '-')}-${product.type}.pdf`}
                 productName={product.name}
               />
             </div>
