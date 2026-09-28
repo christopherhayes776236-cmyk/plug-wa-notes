@@ -15,7 +15,7 @@ UNITS_CONFIG = [
         "notes": "COMP102_Discrete_Mathematics_Notes.pdf",
         "slides": "Visualizing_Set_Theory.pdf",
         "audio": "How_Set_Theory_Powers_Digital_Logic (1).m4a",
-        "video": "Decoding_Set_Theory.mp4",
+        "video": "Set theory.mp4",
     },
     {
         "unit": "soen201",
@@ -23,7 +23,7 @@ UNITS_CONFIG = [
         "notes": "SOEN201_OOAD_Notes.pdf",
         "slides": "SOEN_201_OOAD_Blueprint.pdf",
         "audio": "Object_oriented_design_pillars_and_relationships.m4a",
-        "video": "OOP__Inheritance.mp4",
+        "video": "OOP Inheritance.mp4",
     },
     {
         "unit": "soen202",
@@ -31,7 +31,7 @@ UNITS_CONFIG = [
         "notes": "SOEN202_Web_Programming_Notes.pdf",
         "slides": "Web_Architecture_Blueprint.pdf",
         "audio": "The_hidden_machinery_of_a_web_click.m4a",
-        "video": "The_Invisible_Anatomy_of_a_Website.mp4",
+        "video": "web programming.mp4",
     },
     {
         "unit": "soen203",
@@ -39,7 +39,7 @@ UNITS_CONFIG = [
         "notes": "SOEN203_Database_Systems_Notes.pdf",
         "slides": "Database_Systems_Blueprint.pdf",
         "audio": "The_invisible_architecture_of_database_systems.m4a",
-        "video": "Decoding_Databases.mp4",
+        "video": "Database.mp4",
     },
     {
         "unit": "soen220",
@@ -48,7 +48,7 @@ UNITS_CONFIG = [
         "notes_w3": "SOEN220_Network_Topology_WEEK 3Notes.pdf",
         "slides": "SOEN220_Slide_Overview.pdf",
         "audio": "The_engineering_behind_every_data_packet.m4a",
-        "video": "Data_Packet_Commute.mp4",
+        "video": "Communication.mp4",
     },
     {
         "unit": "soen240",
@@ -56,7 +56,7 @@ UNITS_CONFIG = [
         "notes": "SOEN240_OOP_Java_Notes.pdf",
         "slides": "Architecting_Java.pdf",
         "audio": "The_Architecture_of_Java_and_OOP.m4a",
-        "video": "OOP_I__The_Java_Blueprint.mp4",
+        "video": "Java.mp4",
     },
 ]
 
