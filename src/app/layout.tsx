@@ -40,6 +40,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
+        <link rel="preload" as="image" href="/media/kid-study.webp" type="image/webp" />
         <link rel="preload" as="image" href="/media/slides/image1.png" />
       </head>
       <body className="min-h-full flex flex-col bg-[#F6F4EF] text-[#23211E]">

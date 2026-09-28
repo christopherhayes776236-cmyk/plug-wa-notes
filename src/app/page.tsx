@@ -12,72 +12,19 @@ import { WipeReveal } from '@/components/text-animations/WipeReveal';
 
 const TOTAL_PAGES = 6;
 
-const LOADER_STORAGE_KEY = 'pwn_loader_date';
-
-// ─── Loader: runs once-per-day, 1s count-up, 1.5s hard cap ───
-function useShouldShowLoader() {
-  const [shouldShow, setShouldShow] = useState(false);
-  const [checked, setChecked] = useState(false);
-
-  useEffect(() => {
-    try {
-      const today = new Date().toDateString();
-      const last = window.localStorage.getItem(LOADER_STORAGE_KEY);
-      if (last !== today) {
-        setShouldShow(true);
-        window.localStorage.setItem(LOADER_STORAGE_KEY, today);
-      }
-    } catch {
-      // localStorage unavailable — fail safe, skip loader
-    }
-    setChecked(true);
-  }, []);
-
-  return { shouldShow, checked };
-}
-
 const springTransition = { duration: 0.52, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
 
 // Typewriter text for Audio section
 const AUDIO_TEXT = 'Usiache kuosha viombo iku prevent from catching up, kua sharp boy/girl skiza audio overview';
 
 export default function HomePage() {
-  // ─── Loader state ───────────────────────────────────────────
-  const [loadPercent, setLoadPercent] = useState(0);
-  const [loaderDone, setLoaderDone] = useState(false);
-  const { shouldShow, checked } = useShouldShowLoader();
-  const showLoader = checked && shouldShow && !loaderDone;
+  // ─── Loader state (strictly 1.5s, no percentage count) ───────
+  const [showLoader, setShowLoader] = useState(true);
 
   useEffect(() => {
-    if (!shouldShow || !checked) {
-      setLoaderDone(true);
-      return;
-    }
-
-    const COUNT_MS = 1800;
-    const HOLD_MS = 200;
-    const start = performance.now();
-    let raf: number;
-
-    const tick = (now: number) => {
-      const progress = Math.min((now - start) / COUNT_MS, 1);
-      setLoadPercent(Math.round(progress * 100));
-      if (progress < 1) {
-        raf = requestAnimationFrame(tick);
-      } else {
-        setTimeout(() => setLoaderDone(true), HOLD_MS);
-      }
-    };
-    raf = requestAnimationFrame(tick);
-
-    // Hard cap — never trap user longer than 2s
-    const hardCap = setTimeout(() => setLoaderDone(true), 2000);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(hardCap);
-    };
-  }, [shouldShow, checked]);
+    const timer = setTimeout(() => setShowLoader(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // ─── Page navigation ─────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(0);
@@ -266,76 +213,79 @@ export default function HomePage() {
         {showLoader && (
           <motion.div
             key="loader"
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
             style={{
-              position: 'fixed', inset: 0, zIndex: 9999,
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
               backgroundColor: '#F6F4EF',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: '0.85rem',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1.5rem',
             }}
           >
-            {/* Logo mark */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            {/* Study / Cramming GIF Container */}
+            <div
               style={{
-                fontFamily: 'var(--font-display)', fontWeight: 700,
-                fontSize: 'clamp(1.35rem, 4vw, 1.75rem)', color: '#0F172A',
+                width: 'min(86vw, 280px)',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                boxShadow: '0 12px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06)',
+                border: '1px solid rgba(0, 0, 0, 0.08)',
+                backgroundColor: '#000',
+                marginBottom: '1.25rem',
+              }}
+            >
+              <picture>
+                <source srcSet="/media/kid-study.webp" type="image/webp" />
+                <img
+                  src="/media/kid-study.gif"
+                  alt="Loading..."
+                  loading="eager"
+                  decoding="async"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      'https://res.cloudinary.com/nd4ofxfu/image/upload/v1789866745/plug-wa-notes/kid-study.gif';
+                  }}
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    display: 'block',
+                    aspectRatio: '4 / 3',
+                    objectFit: 'cover',
+                  }}
+                />
+              </picture>
+            </div>
+
+            <div
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontWeight: 600,
+                fontSize: '1.35rem',
+                color: '#0F172A',
                 letterSpacing: '-0.02em',
+                textAlign: 'center',
               }}
             >
               Plug Wa Notes
-            </motion.div>
+            </div>
 
-            {/* Tagline */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.25, duration: 0.4 }}
+            <div
               style={{
-                fontSize: '0.8125rem', color: '#64748B',
-                fontFamily: 'var(--font-body)', letterSpacing: '0.01em',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.8125rem',
+                color: '#64748B',
+                marginTop: '0.25rem',
+                textAlign: 'center',
               }}
             >
-              Loading your study materials…
-            </motion.div>
-
-            {/* Percent counter */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.3 }}
-              style={{
-                fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums',
-                fontWeight: 700, fontSize: '1rem', color: '#1E40AF',
-                minWidth: '3.5rem', textAlign: 'center',
-              }}
-            >
-              {loadPercent}%
-            </motion.div>
-
-            {/* Progress bar */}
-            <motion.div
-              initial={{ opacity: 0, scaleX: 0 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ delay: 0.2, duration: 0.4 }}
-              style={{
-                width: '180px', height: '4px',
-                backgroundColor: '#E2E8F0', borderRadius: '999px', overflow: 'hidden',
-              }}
-            >
-              <div style={{
-                width: `${loadPercent}%`, height: '100%',
-                background: 'linear-gradient(90deg, #1E40AF, #0D9488)',
-                borderRadius: '999px',
-                transition: 'width 0.06s linear',
-              }} />
-            </motion.div>
+              Loading study materials…
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
