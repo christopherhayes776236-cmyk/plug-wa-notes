@@ -96,7 +96,10 @@ export default async function UnitPage({ params }: UnitPageProps) {
       </section>
 
       <footer className="page-footer">
-        <p>Plug Wa Notes &middot; Kisii University SOEN 2.1</p>
+        <p className="page-footer-brand">Plug Wa Notes &middot; Kisii University SOEN 2.1</p>
+        <p className="page-footer-fine" style={{ marginTop: '0.35rem' }}>
+          Powered By Autopal &middot; Contact <a href="tel:+254748686029" style={{ color: 'inherit', textDecoration: 'underline' }}>+254 748686029</a>
+        </p>
       </footer>
     </div>
   );

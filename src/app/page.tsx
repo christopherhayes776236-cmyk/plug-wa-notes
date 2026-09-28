@@ -938,7 +938,9 @@ export default function HomePage() {
               >
                 ↑ Back to beginning
               </button>
-              <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Plug Wa Notes · SOEN 2.1</span>
+              <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                Plug Wa Notes · SOEN 2.1 · Powered By Autopal · Contact: <a href="tel:+254748686029" style={{ color: 'inherit', textDecoration: 'underline' }}>+254 748686029</a>
+              </span>
             </div>
           </section>
 

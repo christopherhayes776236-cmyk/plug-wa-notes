@@ -15,7 +15,7 @@ UNITS_CONFIG = [
         "notes": "COMP102_Discrete_Mathematics_Notes.pdf",
         "slides": "Visualizing_Set_Theory.pdf",
         "audio": "How_Set_Theory_Powers_Digital_Logic (1).m4a",
-        "video": "Decoding_Databases.mp4",
+        "video": "Decoding_Set_Theory.mp4",
     },
     {
         "unit": "soen201",
