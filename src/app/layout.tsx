@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import InstallPrompt from "@/components/InstallPrompt";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -45,6 +46,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-[#F6F4EF] text-[#23211E]">
         {children}
+        <InstallPrompt />
         <Script
           id="sw-register"
           strategy="afterInteractive"
