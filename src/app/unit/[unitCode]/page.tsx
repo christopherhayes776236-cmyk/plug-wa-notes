@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { UNITS, getUnitByCode } from '@/lib/data';
-import { ProductCard } from '@/components/ProductCard';
+import { UnitBatchView } from '@/components/UnitBatchView';
 
 interface UnitPageProps {
   params: Promise<{
@@ -68,21 +68,7 @@ export default async function UnitPage({ params }: UnitPageProps) {
         )}
       </section>
 
-      {unit.sections.map((section) => (
-        <section key={section.id} className="week-section">
-          <div className="week-section-header">
-            <h2 className="week-section-title">{section.title}</h2>
-            <p className="week-section-sub">
-              First batch for this unit — notes, explainer video, slides, and full pack.
-            </p>
-          </div>
-          <div className="products-stack">
-            {section.products.map((product) => (
-              <ProductCard key={product.id} product={product} unitCode={unit.code} />
-            ))}
-          </div>
-        </section>
-      ))}
+      <UnitBatchView unit={unit} />
 
       <section style={{
         marginTop: '1.75rem',

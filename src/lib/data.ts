@@ -105,7 +105,116 @@ function week13Products(
 function week13Section(products: Product[]): WeekSection {
   return {
     id: 'week-1-3',
-    title: 'Week 1–3 notes',
+    title: 'Weeks 1–3',
+    subtitle: 'Foundation revision pack — notes, explainer video, slides, and full pack.',
+    products,
+  };
+}
+
+function week4Products(
+  prefix: string,
+  videoDescription: string,
+  notesOverride?: Product[]
+): Product[] {
+  const notes: Product[] = notesOverride ?? [
+    {
+      id: `${prefix}-w4-notes`,
+      type: 'notes',
+      name: 'Week 4 notes PDF',
+      description: 'Comprehensive, exam-focused lecture notes for week 4.',
+      price: 1,
+      thumbnailSrc: thumb(`${prefix}-notes`),
+      fileUrl: `/units/${prefix}/notes-w4.pdf`,
+    },
+  ];
+
+  return [
+    ...notes,
+    {
+      id: `${prefix}-w4-audio`,
+      type: 'audio',
+      name: 'Week 4 audio overview',
+      description: 'Audio highlight breakdown of week 4 core principles.',
+      price: 3,
+      thumbnailSrc: thumb(`${prefix}-video`),
+      fileUrl: `/units/${prefix}/audio-w4.m4a`,
+    },
+    {
+      id: `${prefix}-w4-video`,
+      type: 'video',
+      name: 'Week 4 explainer video',
+      description: videoDescription,
+      price: 5,
+      thumbnailSrc: thumb(`${prefix}-video`),
+      fileUrl: `/units/${prefix}/video-w4.mp4`,
+    },
+    {
+      id: `${prefix}-w4-video-slides`,
+      type: 'videoSlides',
+      name: 'Week 4 video + slides pack',
+      description: 'Full week 4 video walkthrough plus slide decks for quick revision.',
+      price: 7,
+      thumbnailSrc: thumb(`${prefix}-video-slides`),
+      fileUrl: `/units/${prefix}/video-w4.mp4`,
+      files: [
+        {
+          name: 'Week 4 Explainer Video (MP4)',
+          fileUrl: `/units/${prefix}/video-w4.mp4`,
+          fileName: `${prefix}-w4-explainer-video.mp4`,
+          type: 'video',
+        },
+        {
+          name: 'Week 4 Slide Deck (PDF)',
+          fileUrl: `/units/${prefix}/slides-w4.pdf`,
+          fileName: `${prefix}-w4-slides.pdf`,
+          type: 'slides',
+        },
+      ],
+    },
+    {
+      id: `${prefix}-w4-full-pack`,
+      type: 'fullPack',
+      name: 'Week 4 complete study pack',
+      description: 'All week 4 notes, explainer video, slides, and reference materials.',
+      price: 10,
+      thumbnailSrc: thumb(`${prefix}-full-pack`),
+      fileUrl: `/units/${prefix}/notes-w4.pdf`,
+      files: [
+        {
+          name: 'Week 4 Exam Notes (PDF)',
+          fileUrl: `/units/${prefix}/notes-w4.pdf`,
+          fileName: `${prefix}-w4-notes.pdf`,
+          type: 'notes',
+        },
+        {
+          name: 'Week 4 Slide Deck (PDF)',
+          fileUrl: `/units/${prefix}/slides-w4.pdf`,
+          fileName: `${prefix}-w4-slides.pdf`,
+          type: 'slides',
+        },
+        {
+          name: 'Week 4 Audio Breakdown (M4A)',
+          fileUrl: `/units/${prefix}/audio-w4.m4a`,
+          fileName: `${prefix}-w4-audio-breakdown.m4a`,
+          type: 'audio',
+        },
+        {
+          name: 'Week 4 Explainer Video (MP4)',
+          fileUrl: `/units/${prefix}/video-w4.mp4`,
+          fileName: `${prefix}-w4-explainer-video.mp4`,
+          type: 'video',
+        },
+      ],
+    },
+  ];
+}
+
+function week4Section(products: Product[]): WeekSection {
+  return {
+    id: 'week-4',
+    title: 'Week 4',
+    badge: 'NEW',
+    subtitle: 'Latest batch — week 4 lecture breakdown, notes, slides, and walkthrough.',
     products,
   };
 }
@@ -120,6 +229,9 @@ export const UNITS: Unit[] = [
       week13Section(
         week13Products('comp102', 'Concise visual walkthrough of core problem solving.')
       ),
+      week4Section(
+        week4Products('comp102', 'Visual walkthrough of relations, functions, and advanced set theory applications.')
+      ),
     ],
   },
   {
@@ -130,6 +242,9 @@ export const UNITS: Unit[] = [
     sections: [
       week13Section(
         week13Products('soen201', 'Concise visual walkthrough of UML and modeling cases.')
+      ),
+      week4Section(
+        week4Products('soen201', 'Deep dive into polymorphism, abstract classes, and UML sequence models.')
       ),
     ],
   },
@@ -142,6 +257,9 @@ export const UNITS: Unit[] = [
       week13Section(
         week13Products('soen202', 'Code-along walkthrough of web concepts and exam questions.')
       ),
+      week4Section(
+        week4Products('soen202', 'Practical walkthrough of DOM manipulation, event handling, and modern CSS.')
+      ),
     ],
   },
   {
@@ -152,6 +270,9 @@ export const UNITS: Unit[] = [
     sections: [
       week13Section(
         week13Products('soen203', 'Step-by-step queries, schema design, and normalization breakdown.')
+      ),
+      week4Section(
+        week4Products('soen203', 'Complex SQL joins, nested queries, subqueries, and indexing strategies.')
       ),
     ],
   },
@@ -183,6 +304,19 @@ export const UNITS: Unit[] = [
           },
         ])
       ),
+      week4Section(
+        week4Products('soen220', 'Data link layer framing, error detection, CRC, and flow control mechanisms.', [
+          {
+            id: 'soen220-w4-notes',
+            type: 'notes',
+            name: 'Week 4 notes PDF',
+            description: 'Data link layer framing, flow control, and network architecture notes.',
+            price: 1,
+            thumbnailSrc: thumb('soen220-notes-w3'),
+            fileUrl: '/units/soen220/notes-w4.pdf',
+          },
+        ])
+      ),
     ],
   },
   {
@@ -193,6 +327,9 @@ export const UNITS: Unit[] = [
     sections: [
       week13Section(
         week13Products('soen240', 'Object-oriented Java execution patterns and live code solutions.')
+      ),
+      week4Section(
+        week4Products('soen240', 'Java inheritance hierarchy, super/this mechanics, and exception handling.')
       ),
     ],
   },

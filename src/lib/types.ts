@@ -22,6 +22,8 @@ export interface Product {
 export interface WeekSection {
   id: string;
   title: string;
+  subtitle?: string;
+  badge?: string;
   products: Product[];
 }
 
