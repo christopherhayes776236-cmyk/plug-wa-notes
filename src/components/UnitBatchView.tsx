@@ -10,115 +10,168 @@ interface UnitBatchViewProps {
 
 export const UnitBatchView: React.FC<UnitBatchViewProps> = ({ unit }) => {
   const sections = unit.sections || [];
-  const [activeSectionId, setActiveSectionId] = useState<string>(
-    sections[0]?.id || ''
-  );
 
-  const activeSection = sections.find((s) => s.id === activeSectionId) || sections[0];
+  // Track expanded state for each section ID. By default, open the first section.
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    sections.forEach((sec, idx) => {
+      // First section is open by default
+      initial[sec.id] = idx === 0;
+    });
+    return initial;
+  });
+
+  const toggleSection = (sectionId: string) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
 
   if (!sections.length) {
     return null;
   }
 
   return (
-    <div className="unit-batch-container">
-      {/* ─── Segmented Batch Pill Switcher ─────────────────────── */}
-      {sections.length > 1 && (
-        <div
-          role="tablist"
-          aria-label="Study material batches"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            backgroundColor: 'rgba(15, 23, 42, 0.05)',
-            border: '1px solid rgba(15, 23, 42, 0.08)',
-            borderRadius: '9999px',
-            padding: '4px',
-            gap: '4px',
-            marginBottom: '1.75rem',
-            width: '100%',
-            maxWidth: '100%',
-            boxSizing: 'border-box',
-          }}
-        >
-          {sections.map((section) => {
-            const isActive = section.id === activeSection?.id;
-            return (
-              <button
-                key={section.id}
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setActiveSectionId(section.id)}
+    <div className="unit-batch-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {sections.map((section) => {
+        const isOpen = !!openSections[section.id];
+        const productCount = section.products?.length || 0;
+
+        return (
+          <div
+            key={section.id}
+            style={{
+              backgroundColor: 'var(--white, #FFFFFF)',
+              borderRadius: '16px',
+              border: isOpen ? '1.5px solid #0F172A' : '1px solid rgba(15, 23, 42, 0.09)',
+              boxShadow: isOpen
+                ? '0 6px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04)'
+                : '0 2px 8px -2px rgba(15, 23, 42, 0.04)',
+              overflow: 'hidden',
+              transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+            }}
+          >
+            {/* ─── Clickable Week Button / Accordion Header ─── */}
+            <button
+              type="button"
+              onClick={() => toggleSection(section.id)}
+              aria-expanded={isOpen}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '1.125rem 1.25rem',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                WebkitTapHighlightColor: 'transparent',
+                gap: '0.75rem',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-display, inherit)',
+                      fontWeight: 700,
+                      fontSize: '1.125rem',
+                      color: 'var(--ink, #0F172A)',
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
+                    {section.title}
+                  </span>
+
+                  {section.badge && (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        backgroundColor: '#10B981',
+                        color: '#FFFFFF',
+                        fontSize: '0.6875rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.04em',
+                        padding: '0.125rem 0.45rem',
+                        borderRadius: '9999px',
+                        textTransform: 'uppercase',
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {section.badge}
+                    </span>
+                  )}
+                </div>
+
+                <p
+                  style={{
+                    fontSize: '0.8125rem',
+                    color: 'var(--ink-muted, #64748B)',
+                    margin: '0.25rem 0 0 0',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {section.subtitle || `${productCount} study materials (Notes, Video, Audio, Packs)`}
+                </p>
+              </div>
+
+              {/* ─── Expand / Collapse Indicator Arrow ─── */}
+              <div
                 style={{
-                  flex: 1,
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  backgroundColor: isOpen ? '#0F172A' : 'rgba(15, 23, 42, 0.05)',
+                  color: isOpen ? '#FFFFFF' : '#0F172A',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '0.45rem',
-                  padding: '0.625rem 1rem',
-                  borderRadius: '9999px',
-                  border: 'none',
-                  fontSize: '0.875rem',
-                  fontFamily: 'var(--font-display, inherit)',
-                  fontWeight: isActive ? 600 : 500,
-                  color: isActive ? '#FFFFFF' : 'var(--ink-muted, #64748B)',
-                  backgroundColor: isActive ? '#0F172A' : 'transparent',
-                  boxShadow: isActive
-                    ? '0 2px 8px rgba(15, 23, 42, 0.18), 0 1px 2px rgba(15, 23, 42, 0.12)'
-                    : 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.18s ease',
-                  WebkitTapHighlightColor: 'transparent',
+                  flexShrink: 0,
+                  transition: 'transform 0.25s ease, background-color 0.2s ease, color 0.2s ease',
+                  transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                 }}
               >
-                <span>{section.title}</span>
-                {section.badge && (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      backgroundColor: isActive ? '#10B981' : '#059669',
-                      color: '#FFFFFF',
-                      fontSize: '0.6875rem',
-                      fontWeight: 700,
-                      letterSpacing: '0.04em',
-                      padding: '0.125rem 0.45rem',
-                      borderRadius: '9999px',
-                      textTransform: 'uppercase',
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {section.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </button>
 
-      {/* ─── Active Section Content ────────────────────────────── */}
-      {activeSection && (
-        <section key={activeSection.id} className="week-section">
-          <div className="week-section-header">
-            <h2 className="week-section-title">{activeSection.title}</h2>
-            <p className="week-section-sub">
-              {activeSection.subtitle ||
-                'Exam notes, slide blueprint, explainer video, audio overview, and complete study pack.'}
-            </p>
+            {/* ─── Collapsible Dropdown Content ─── */}
+            {isOpen && (
+              <div
+                style={{
+                  padding: '0 1.25rem 1.25rem 1.25rem',
+                  borderTop: '1px solid rgba(15, 23, 42, 0.06)',
+                  paddingTop: '1.25rem',
+                }}
+              >
+                <div className="products-stack" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {section.products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      unitCode={unit.code}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-
-          <div className="products-stack">
-            {activeSection.products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                unitCode={unit.code}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+        );
+      })}
     </div>
   );
 };

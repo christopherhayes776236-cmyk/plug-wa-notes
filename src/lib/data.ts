@@ -229,9 +229,6 @@ export const UNITS: Unit[] = [
       week13Section(
         week13Products('comp102', 'Concise visual walkthrough of core problem solving.')
       ),
-      week4Section(
-        week4Products('comp102', 'Visual walkthrough of relations, functions, and advanced set theory applications.')
-      ),
     ],
   },
   {
@@ -242,9 +239,6 @@ export const UNITS: Unit[] = [
     sections: [
       week13Section(
         week13Products('soen201', 'Concise visual walkthrough of UML and modeling cases.')
-      ),
-      week4Section(
-        week4Products('soen201', 'Deep dive into polymorphism, abstract classes, and UML sequence models.')
       ),
     ],
   },
@@ -257,9 +251,6 @@ export const UNITS: Unit[] = [
       week13Section(
         week13Products('soen202', 'Code-along walkthrough of web concepts and exam questions.')
       ),
-      week4Section(
-        week4Products('soen202', 'Practical walkthrough of DOM manipulation, event handling, and modern CSS.')
-      ),
     ],
   },
   {
@@ -270,9 +261,6 @@ export const UNITS: Unit[] = [
     sections: [
       week13Section(
         week13Products('soen203', 'Step-by-step queries, schema design, and normalization breakdown.')
-      ),
-      week4Section(
-        week4Products('soen203', 'Complex SQL joins, nested queries, subqueries, and indexing strategies.')
       ),
     ],
   },
@@ -304,19 +292,6 @@ export const UNITS: Unit[] = [
           },
         ])
       ),
-      week4Section(
-        week4Products('soen220', 'Data link layer framing, error detection, CRC, and flow control mechanisms.', [
-          {
-            id: 'soen220-w4-notes',
-            type: 'notes',
-            name: 'Week 4 notes PDF',
-            description: 'Data link layer framing, flow control, and network architecture notes.',
-            price: 1,
-            thumbnailSrc: thumb('soen220-notes-w3'),
-            fileUrl: '/units/soen220/notes-w4.pdf',
-          },
-        ])
-      ),
     ],
   },
   {
@@ -327,9 +302,6 @@ export const UNITS: Unit[] = [
     sections: [
       week13Section(
         week13Products('soen240', 'Object-oriented Java execution patterns and live code solutions.')
-      ),
-      week4Section(
-        week4Products('soen240', 'Java inheritance hierarchy, super/this mechanics, and exception handling.')
       ),
     ],
   },
