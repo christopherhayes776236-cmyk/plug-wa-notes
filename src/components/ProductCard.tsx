@@ -7,6 +7,8 @@ import { PhoneInput } from './PhoneInput';
 import { StatusBanner } from './StatusBanner';
 import { DownloadButton } from './DownloadButton';
 
+const FREE_WEEKEND = process.env.NEXT_PUBLIC_FREE_WEEKEND === 'true';
+
 interface ProductCardProps {
   product: Product;
   unitCode: string;
@@ -155,6 +157,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
     return `${product.id}.pdf`;
   };
 
+  const renderDownloadButtons = () => {
+    if (product.files && product.files.length > 0) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink)' }}>
+            Pack files ({product.files.length} items):
+          </div>
+          {product.files.map((file, idx) => (
+            <DownloadButton
+              key={idx}
+              fileUrl={file.fileUrl}
+              fileName={file.fileName}
+              productName={file.name}
+            />
+          ))}
+        </div>
+      );
+    }
+    return (
+      <DownloadButton
+        fileUrl={downloadUrl || getProductRealDownloadUrl()}
+        fileName={getProductFileName()}
+        productName={product.name}
+      />
+    );
+  };
+
   return (
     <div className="product-card">
       <div className="product-card-thumb">
@@ -173,39 +202,42 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
             <p className="product-card-title">{product.name}</p>
             <p className="product-card-desc">{product.description}</p>
           </div>
-          <PriceTag amount={product.price} variant={isBlue ? 'blue' : 'teal'} />
+          <PriceTag amount={product.price} variant={isBlue ? 'blue' : 'teal'} freeMode={FREE_WEEKEND} />
         </div>
 
         <div className="product-card-action">
           {state === 'idle' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
-              <button
-                className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
-                onClick={() => setState('entering_phone')}
-              >
-                Buy — KSH {product.price}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setDownloadUrl(getProductRealDownloadUrl());
-                  setState('paid');
-                }}
-                style={{
-                  background: '#FEF3C7',
-                  border: '1px dashed #D97706',
-                  color: '#92400E',
-                  fontSize: '0.75rem',
-                  padding: '0.4rem',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  width: '100%',
-                }}
-              >
-                ⚡ Test Download (Bypass Payment)
-              </button>
-            </div>
+            FREE_WEEKEND ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: '#15803d',
+                  background: 'rgba(34, 197, 94, 0.12)',
+                  border: '1px solid rgba(34, 197, 94, 0.25)',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '4px',
+                  width: 'fit-content'
+                }}>
+                  <span>⚡ Free Weekend Pass</span>
+                </div>
+                {renderDownloadButtons()}
+              </div>
+            ) : (
+              <div style={{ width: '100%' }}>
+                <button
+                  className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
+                  onClick={() => setState('entering_phone')}
+                >
+                  Buy — KSH {product.price}
+                </button>
+              </div>
+            )
           )}
 
           {state === 'entering_phone' && (
@@ -267,27 +299,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
           {state === 'paid' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <StatusBanner status="paid" />
-              {product.files && product.files.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink)' }}>
-                    Your pack is ready ({product.files.length} items):
-                  </div>
-                  {product.files.map((file, idx) => (
-                    <DownloadButton
-                      key={idx}
-                      fileUrl={file.fileUrl}
-                      fileName={file.fileName}
-                      productName={file.name}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <DownloadButton
-                  fileUrl={downloadUrl || getProductRealDownloadUrl()}
-                  fileName={getProductFileName()}
-                  productName={product.name}
-                />
-              )}
+              {renderDownloadButtons()}
             </div>
           )}
 

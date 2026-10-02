@@ -199,7 +199,7 @@ button:active,
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
-  padding: 4.5rem 1.25rem 1.75rem;
+  padding: calc(4.5rem + var(--fwb-h, 0px)) 1.25rem 1.75rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -207,12 +207,13 @@ button:active,
   position: relative;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  transition: padding-top 0.2s ease;
 }
 
 @media (min-width: 1024px) {
   .fullpage-slide {
     max-width: 1180px;
-    padding: 5.25rem 2.5rem 2.25rem;
+    padding: calc(5.25rem + var(--fwb-h, 0px)) 2.5rem 2.25rem;
   }
 }
 
