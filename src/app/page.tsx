@@ -18,10 +18,13 @@ const springTransition = { duration: 0.52, ease: [0.16, 1, 0.3, 1] as [number, n
 const AUDIO_TEXT = 'Usiache kuosha viombo iku prevent from catching up, kua sharp boy/girl skiza audio overview';
 
 export default function HomePage() {
-  // ─── Loader state (strictly 1.5s, no percentage count) ───────
-  const [showLoader, setShowLoader] = useState(true);
+  // ─── Loader state (client-only to avoid hydration mismatch) ───
+  const [mounted, setMounted] = useState(false);
+  const [showLoader, setShowLoader] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    setShowLoader(true);
     const timer = setTimeout(() => setShowLoader(false), 1500);
     return () => clearTimeout(timer);
   }, []);
@@ -29,6 +32,7 @@ export default function HomePage() {
   // ─── Page navigation ─────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(0);
   const isTransitioningRef = useRef(false);
+  const lastScrollTimeRef = useRef(0);
   const touchStartYRef = useRef(0);
   const [animKey, setAnimKey] = useState(0);
   const router = useRouter();
@@ -135,7 +139,7 @@ export default function HomePage() {
     isTransitioningRef.current = true;
     setCurrentPage(index);
     setAnimKey((k) => k + 1);
-    setTimeout(() => { isTransitioningRef.current = false; }, 650);
+    setTimeout(() => { isTransitioningRef.current = false; }, 850);
   }, []);
 
   const nextPage = useCallback(() => {
@@ -152,9 +156,29 @@ export default function HomePage() {
 
     const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('.unit-grid')) return;
+      const unitGrid = target.closest('.unit-grid') as HTMLElement | null;
+      if (unitGrid) {
+        // If at the top of the units list and scrolling up, go back to previous slide
+        if (e.deltaY < -35 && unitGrid.scrollTop <= 0) {
+          e.preventDefault();
+          const now = Date.now();
+          if (now - lastScrollTimeRef.current >= 850) {
+            lastScrollTimeRef.current = now;
+            prevPage();
+          }
+        }
+        return;
+      }
+
       if (isMediaTarget(target) || notesVideoPlaying || videoPlaying || audioPlaying) return;
-      if (Math.abs(e.deltaY) > 28) {
+
+      e.preventDefault();
+
+      const now = Date.now();
+      if (now - lastScrollTimeRef.current < 850) return;
+
+      if (Math.abs(e.deltaY) > 24) {
+        lastScrollTimeRef.current = now;
         e.deltaY > 0 ? nextPage() : prevPage();
       }
     };
@@ -202,8 +226,15 @@ export default function HomePage() {
   };
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (isMediaTarget(e.target) || notesVideoPlaying || videoPlaying || audioPlaying) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('.unit-grid')) return;
     const deltaY = touchStartYRef.current - e.changedTouches[0].clientY;
-    if (Math.abs(deltaY) > 42) deltaY > 0 ? nextPage() : prevPage();
+    if (Math.abs(deltaY) > 42) {
+      const now = Date.now();
+      if (now - lastScrollTimeRef.current < 750) return;
+      lastScrollTimeRef.current = now;
+      deltaY > 0 ? nextPage() : prevPage();
+    }
   };
 
   return (
@@ -295,7 +326,7 @@ export default function HomePage() {
         className="fullpage-wrapper"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        style={{ opacity: showLoader ? 0 : 1, transition: 'opacity 0.3s ease' }}
+        style={{ opacity: mounted && showLoader ? 0 : 1, transition: mounted ? 'opacity 0.3s ease' : 'none' }}
       >
 
         {/* Floating Header */}
@@ -434,26 +465,42 @@ export default function HomePage() {
 
           {/* ═══════════ PAGE 2 – Notes ═══════════ */}
           <section className="fullpage-slide" key="slide-1">
-            <div style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: '1.25rem', maxWidth: '750px', margin: '0 auto',
-              width: '100%', textAlign: 'center', padding: '1rem',
-            }}>
-              <FormatIcon type="notes" color="#2450C8" size={48} />
-              <h2 style={{
-                fontSize: 'clamp(1.4rem, 2.8vw, 2.25rem)',
-                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.25,
-              }}>
-                <StaggerWords
-                  text="Feeling behind in class? No stress - Pata notes hapa."
-                  color="#1E40AF"
-                />
-              </h2>
+            <div className="slide-grid">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.875rem' }}>
+                <FormatIcon type="notes" color="#2450C8" size={44} />
+                <h2 style={{
+                  fontSize: 'clamp(1.25rem, 2.4vw, 1.95rem)',
+                  fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.25, maxWidth: '440px',
+                }}>
+                  <StaggerWords
+                    text="Feeling behind in class? No stress - Pata notes hapa."
+                    color="#1E40AF"
+                  />
+                </h2>
+                <button
+                  id="homepage-notes-video-btn"
+                  onClick={toggleNotesVideo}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.45rem 1.15rem', borderRadius: '999px',
+                    backgroundColor: notesVideoPlaying ? '#F1F5F9' : '#1E40AF',
+                    color: notesVideoPlaying ? '#0F172A' : '#FFFFFF',
+                    fontSize: '0.8125rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                    transition: 'background-color 0.15s ease, transform 0.15s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  }}
+                >
+                  <span>{notesVideoPlaying ? 'Pause Notes ⏸' : 'Play Notes Video ▶'}</span>
+                </button>
+              </div>
 
               {/* Notes Video Player Card */}
               <div style={{
                 width: '100%',
-                maxWidth: '520px',
+                maxWidth: '460px',
+                margin: '0 auto',
                 borderRadius: '12px',
                 overflow: 'hidden',
                 border: '1px solid #E2E8F0',
@@ -473,36 +520,18 @@ export default function HomePage() {
                   onEnded={() => setNotesVideoPlaying(false)}
                   onTouchStart={(e) => e.stopPropagation()}
                   onTouchEnd={(e) => e.stopPropagation()}
-                  style={{ width: '100%', maxHeight: '280px', display: 'block' }}
+                  style={{ width: '100%', maxHeight: 'min(240px, 32vh)', display: 'block', objectFit: 'contain' }}
                 />
               </div>
-
-              <button
-                id="homepage-notes-video-btn"
-                onClick={toggleNotesVideo}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                  padding: '0.5rem 1.25rem', borderRadius: '999px',
-                  backgroundColor: notesVideoPlaying ? '#F1F5F9' : '#1E40AF',
-                  color: notesVideoPlaying ? '#0F172A' : '#FFFFFF',
-                  fontSize: '0.8125rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                  transition: 'background-color 0.15s ease, transform 0.15s ease',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                }}
-              >
-                <span>{notesVideoPlaying ? 'Pause Notes ⏸' : 'Play Notes Video ▶'}</span>
-              </button>
             </div>
 
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem',
+              borderTop: '1px solid #E2E8F0', paddingTop: '0.75rem', flexShrink: 0,
             }}>
               <button onClick={prevPage} style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}>↑</button>
               <button onClick={nextPage} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.35rem',
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 1.25rem',
                 backgroundColor: '#0D9488', color: '#FFFFFF', fontSize: '0.8125rem', fontWeight: 500, border: 'none', cursor: 'pointer',
               }}>↓</button>
             </div>
@@ -510,26 +539,42 @@ export default function HomePage() {
 
           {/* ═══════════ PAGE 3 – Video ═══════════ */}
           <section className="fullpage-slide" key="slide-2">
-            <div style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: '1.25rem', maxWidth: '750px', margin: '0 auto',
-              width: '100%', textAlign: 'center', padding: '1rem',
-            }}>
-              <FormatIcon type="video" color="#157F72" size={48} />
-              <h2 style={{
-                fontSize: 'clamp(1.4rem, 2.8vw, 2.25rem)',
-                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.25,
-              }}>
-                <ConvergeLetters
-                  text="Some units just make more sense in visuals - Pata video review hapa ndani."
-                  color="#0D9488"
-                />
-              </h2>
+            <div className="slide-grid">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.875rem' }}>
+                <FormatIcon type="video" color="#157F72" size={44} />
+                <h2 style={{
+                  fontSize: 'clamp(1.25rem, 2.4vw, 1.95rem)',
+                  fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.25, maxWidth: '440px',
+                }}>
+                  <ConvergeLetters
+                    text="Some units just make more sense in visuals - Pata video review hapa ndani."
+                    color="#0D9488"
+                  />
+                </h2>
+                <button
+                  id="homepage-video-btn"
+                  onClick={toggleVideo}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.45rem 1.15rem', borderRadius: '999px',
+                    backgroundColor: videoPlaying ? '#F1F5F9' : '#0D9488',
+                    color: videoPlaying ? '#0F172A' : '#FFFFFF',
+                    fontSize: '0.8125rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                    transition: 'background-color 0.15s ease, transform 0.15s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  }}
+                >
+                  <span>{videoPlaying ? 'Pause Video ⏸' : 'Play Explainer Video ▶'}</span>
+                </button>
+              </div>
 
               {/* Video Player Card (Optimized for Vertical 9:16) */}
               <div style={{
                 width: '100%',
-                maxWidth: '280px',
+                maxWidth: '240px',
+                margin: '0 auto',
                 borderRadius: '16px',
                 overflow: 'hidden',
                 border: '1px solid #E2E8F0',
@@ -549,36 +594,18 @@ export default function HomePage() {
                   onEnded={() => setVideoPlaying(false)}
                   onTouchStart={(e) => e.stopPropagation()}
                   onTouchEnd={(e) => e.stopPropagation()}
-                  style={{ width: '100%', maxHeight: '350px', objectFit: 'contain', display: 'block' }}
+                  style={{ width: '100%', maxHeight: 'min(280px, 36vh)', objectFit: 'contain', display: 'block' }}
                 />
               </div>
-
-              <button
-                id="homepage-video-btn"
-                onClick={toggleVideo}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                  padding: '0.5rem 1.25rem', borderRadius: '999px',
-                  backgroundColor: videoPlaying ? '#F1F5F9' : '#0D9488',
-                  color: videoPlaying ? '#0F172A' : '#FFFFFF',
-                  fontSize: '0.8125rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                  transition: 'background-color 0.15s ease, transform 0.15s ease',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                }}
-              >
-                <span>{videoPlaying ? 'Pause Video ⏸' : 'Play Explainer Video ▶'}</span>
-              </button>
             </div>
 
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem',
+              borderTop: '1px solid #E2E8F0', paddingTop: '0.75rem', flexShrink: 0,
             }}>
               <button onClick={prevPage} style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}>↑</button>
               <button onClick={nextPage} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.35rem',
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 1.25rem',
                 backgroundColor: '#1E40AF', color: '#FFFFFF', fontSize: '0.8125rem', fontWeight: 500, border: 'none', cursor: 'pointer',
               }}>↓</button>
             </div>
@@ -586,26 +613,25 @@ export default function HomePage() {
 
           {/* ═══════════ PAGE 4 – Audio (typewriter) ═══════════ */}
           <section className="fullpage-slide" key="slide-3">
-            <div style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: '1.25rem', maxWidth: '750px', margin: '0 auto',
-              width: '100%', textAlign: 'center', padding: '1rem',
-            }}>
-              <FormatIcon type="audio" color="#157F72" size={48} />
-              <h2 style={{
-                fontSize: 'clamp(1.2rem, 2.5vw, 1.85rem)',
-                fontFamily: 'var(--font-display)', fontWeight: 500, color: '#1E40AF',
-                lineHeight: 1.3, minHeight: '3.5rem',
-              }}>
-                &ldquo;{typedAudioText}&rdquo;
-                {!typingComplete && <span className="typewriter-cursor" />}
-              </h2>
+            <div className="slide-grid">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.875rem' }}>
+                <FormatIcon type="audio" color="#157F72" size={44} />
+                <h2 style={{
+                  fontSize: 'clamp(1.15rem, 2.2vw, 1.7rem)',
+                  fontFamily: 'var(--font-display)', fontWeight: 500, color: '#1E40AF',
+                  lineHeight: 1.3, minHeight: '3rem', maxWidth: '440px',
+                }}>
+                  &ldquo;{typedAudioText}&rdquo;
+                  {!typingComplete && <span className="typewriter-cursor" />}
+                </h2>
+              </div>
 
               {/* Audio Player Card */}
               <div style={{
                 width: '100%',
-                maxWidth: '460px',
-                padding: '1.25rem 1.5rem',
+                maxWidth: '440px',
+                margin: '0 auto',
+                padding: '1.15rem 1.35rem',
                 borderRadius: '12px',
                 background: '#FFFFFF',
                 border: '1px solid #E2E8F0',
@@ -613,7 +639,7 @@ export default function HomePage() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '0.85rem',
+                gap: '0.75rem',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1E40AF', fontSize: '0.8125rem', fontWeight: 600 }}>
                   <span>🎧 Audio Overview Preview (20s)</span>
@@ -628,7 +654,7 @@ export default function HomePage() {
                   onEnded={() => setAudioPlaying(false)}
                   onTouchStart={(e) => e.stopPropagation()}
                   onTouchEnd={(e) => e.stopPropagation()}
-                  style={{ width: '100%', height: '44px' }}
+                  style={{ width: '100%', height: '42px' }}
                 >
                   <source src="/media/audio-highlight.mp3" type="audio/mpeg" />
                   <source src="/media/audio-highlight.m4a" type="audio/mp4" />
@@ -642,7 +668,7 @@ export default function HomePage() {
                   onTouchEnd={(e) => e.stopPropagation()}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                    padding: '0.5rem 1.25rem', borderRadius: '999px',
+                    padding: '0.45rem 1.15rem', borderRadius: '999px',
                     backgroundColor: audioPlaying ? '#F1F5F9' : '#1E40AF',
                     color: audioPlaying ? '#0F172A' : '#FFFFFF',
                     fontSize: '0.8125rem', fontWeight: 600, border: 'none', cursor: 'pointer',
@@ -656,11 +682,11 @@ export default function HomePage() {
 
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem',
+              borderTop: '1px solid #E2E8F0', paddingTop: '0.75rem', flexShrink: 0,
             }}>
               <button onClick={prevPage} style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}>↑</button>
               <button onClick={nextPage} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.35rem',
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 1.25rem',
                 backgroundColor: '#0D9488', color: '#FFFFFF', fontSize: '0.8125rem', fontWeight: 500, border: 'none', cursor: 'pointer',
               }}>↓</button>
             </div>
@@ -668,21 +694,19 @@ export default function HomePage() {
 
           {/* ═══════════ PAGE 5 – Slides ═══════════ */}
           <section className="fullpage-slide" key="slide-4">
-            <div style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: '1.25rem', maxWidth: '750px', margin: '0 auto',
-              width: '100%', textAlign: 'center', padding: '1rem',
-            }}>
-              <FormatIcon type="slides" color="#2450C8" size={48} />
-              <h2 style={{
-                fontSize: 'clamp(1.4rem, 2.8vw, 2.25rem)',
-                fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.25,
-              }}>
-                <WipeReveal
-                  text="Need a short version before cats or exams? Pata slides hapa."
-                  color="#1E40AF"
-                />
-              </h2>
+            <div className="slide-grid">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '0.875rem' }}>
+                <FormatIcon type="slides" color="#2450C8" size={44} />
+                <h2 style={{
+                  fontSize: 'clamp(1.25rem, 2.4vw, 1.95rem)',
+                  fontFamily: 'var(--font-display)', fontWeight: 500, lineHeight: 1.25, maxWidth: '440px',
+                }}>
+                  <WipeReveal
+                    text="Need a short version before cats or exams? Pata slides hapa."
+                    color="#1E40AF"
+                  />
+                </h2>
+              </div>
 
               {/* Slide Deck Viewer */}
               <div
@@ -691,8 +715,9 @@ export default function HomePage() {
                 onTouchEnd={(e) => e.stopPropagation()}
                 onWheel={(e) => e.stopPropagation()}
                 style={{
-                  width: '95%',
-                  maxWidth: '640px',
+                  width: '100%',
+                  maxWidth: '520px',
+                  margin: '0 auto',
                   borderRadius: '12px',
                   overflow: 'hidden',
                   border: '1px solid #E2E8F0',
@@ -705,7 +730,7 @@ export default function HomePage() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  padding: '0.625rem 1rem',
+                  padding: '0.45rem 0.85rem',
                   borderBottom: '1px solid #F1F5F9',
                   backgroundColor: '#F8FAFC',
                 }}>
@@ -714,7 +739,7 @@ export default function HomePage() {
                     fontWeight: 600,
                     color: '#0D9488',
                     backgroundColor: '#F0FDFA',
-                    padding: '0.2rem 0.6rem',
+                    padding: '0.15rem 0.55rem',
                     borderRadius: '999px',
                     border: '1px solid #CCFBF1',
                   }}>
@@ -726,7 +751,7 @@ export default function HomePage() {
                       id="slide-deck-prev-btn"
                       onClick={() => setCurrentSlide((prev) => (prev > 0 ? prev - 1 : SLIDE_IMAGES.length - 1))}
                       style={{
-                        padding: '0.3rem 0.65rem',
+                        padding: '0.25rem 0.6rem',
                         fontSize: '0.75rem',
                         fontWeight: 600,
                         color: '#475569',
@@ -742,7 +767,7 @@ export default function HomePage() {
                       id="slide-deck-next-btn"
                       onClick={() => setCurrentSlide((prev) => (prev < SLIDE_IMAGES.length - 1 ? prev + 1 : 0))}
                       style={{
-                        padding: '0.3rem 0.65rem',
+                        padding: '0.25rem 0.6rem',
                         fontSize: '0.75rem',
                         fontWeight: 600,
                         color: '#FFFFFF',
@@ -761,7 +786,7 @@ export default function HomePage() {
                 <div style={{
                   position: 'relative',
                   aspectRatio: '16/9',
-                  minHeight: '180px',
+                  maxHeight: 'min(190px, 26vh)',
                   backgroundColor: '#0F172A',
                   display: 'flex',
                   alignItems: 'center',
@@ -780,7 +805,7 @@ export default function HomePage() {
                   display: 'flex',
                   gap: '0.4rem',
                   overflowX: 'auto',
-                  padding: '0.5rem 0.75rem',
+                  padding: '0.35rem 0.6rem',
                   backgroundColor: '#F8FAFC',
                   borderTop: '1px solid #F1F5F9',
                 }}>
@@ -791,8 +816,8 @@ export default function HomePage() {
                       onClick={() => setCurrentSlide(i)}
                       style={{
                         flexShrink: 0,
-                        width: '56px',
-                        height: '36px',
+                        width: '46px',
+                        height: '30px',
                         padding: 0,
                         border: currentSlide === i ? '2px solid #0D9488' : '1px solid #E2E8F0',
                         borderRadius: '3px',
@@ -811,11 +836,11 @@ export default function HomePage() {
 
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem',
+              borderTop: '1px solid #E2E8F0', paddingTop: '0.75rem', flexShrink: 0,
             }}>
               <button onClick={prevPage} style={{ background: 'none', border: 'none', fontSize: '0.8125rem', color: '#64748B', cursor: 'pointer' }}>↑</button>
               <button onClick={nextPage} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.35rem',
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 1.25rem',
                 backgroundColor: '#1E40AF', color: '#FFFFFF', fontSize: '0.8125rem', fontWeight: 500, border: 'none', cursor: 'pointer',
               }}>↓</button>
             </div>
@@ -823,14 +848,14 @@ export default function HomePage() {
 
           {/* ═══════════ PAGE 6 – Pick your unit ═══════════ */}
           <section className="fullpage-slide" key={`slide-5-${animKey}`}>
-            <div style={{ marginBottom: '1.25rem' }}>
+            <div style={{ marginBottom: '0.75rem', flexShrink: 0 }}>
               <h2 className="anim-fade-in" style={{
-                fontSize: 'clamp(1.75rem, 3.4vw, 2.5rem)',
+                fontSize: 'clamp(1.5rem, 3vw, 2.25rem)',
                 fontFamily: 'var(--font-display)', fontWeight: 500, color: '#0F172A', letterSpacing: '-0.015em',
               }}>
                 Pick your unit
               </h2>
-              <p className="anim-fade-in" style={{ fontSize: '0.875rem', color: '#475569', marginTop: '0.25rem' }}>
+              <p className="anim-fade-in" style={{ fontSize: '0.8125rem', color: '#475569', marginTop: '0.2rem' }}>
                 Select a course unit to open notes, explainer video, audio recap, and slide packs.
               </p>
             </div>
@@ -839,8 +864,9 @@ export default function HomePage() {
               className="unit-grid anim-fade-in"
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '0.875rem', marginBottom: '1.5rem',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: '0.75rem', paddingBottom: '0.5rem',
+                alignContent: 'start',
               }}
             >
               {UNITS.map((unit) => {
@@ -851,23 +877,23 @@ export default function HomePage() {
                     href={`/unit/${slug}`}
                     className="unit-card"
                     style={{
-                      background: '#FFFFFF', border: '1px solid #E2E8F0', padding: '1.125rem',
+                      background: '#FFFFFF', border: '1px solid #E2E8F0', padding: '1rem',
                       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                      minHeight: '6.5rem', textDecoration: 'none',
+                      minHeight: '6rem', textDecoration: 'none',
                       transition: 'border-color 0.15s ease, transform 0.15s ease',
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1E40AF', fontFamily: 'var(--font-display)' }}>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1E40AF', fontFamily: 'var(--font-display)' }}>
                         {unit.code}
                       </div>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0F172A', marginTop: '0.35rem', lineHeight: 1.35 }}>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#0F172A', marginTop: '0.25rem', lineHeight: 1.3 }}>
                         {unit.name}
                       </div>
                     </div>
                     <div style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      marginTop: '0.75rem', borderTop: '1px solid #F1F5F9', paddingTop: '0.5rem',
+                      marginTop: '0.5rem', borderTop: '1px solid #F1F5F9', paddingTop: '0.35rem',
                       fontSize: '0.6875rem', color: '#64748B',
                     }}>
                       <span>{unit.lecturer}</span>
@@ -879,7 +905,7 @@ export default function HomePage() {
             </div>
 
             <div style={{
-              borderTop: '1px solid #E2E8F0', paddingTop: '1.125rem',
+              borderTop: '1px solid #E2E8F0', paddingTop: '0.75rem', flexShrink: 0,
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
               <button

@@ -8,20 +8,32 @@ interface ConvergeLettersProps {
 }
 
 export function ConvergeLetters({ text, color = '#0D9488' }: ConvergeLettersProps) {
-  const letters = text.split('');
+  const words = text.split(' ');
+  let globalCharIndex = 0;
+
   return (
-    <span style={{ display: 'inline-block' }}>
-      {letters.map((ch, i) => (
-        <motion.span
-          key={i}
-          initial={{ opacity: 0, x: i % 2 === 0 ? -16 : 16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.02, duration: 0.3, ease: 'easeOut' }}
-          style={{ display: 'inline-block', color }}
-        >
-          {ch === ' ' ? '\u00A0' : ch}
-        </motion.span>
-      ))}
+    <span style={{ display: 'inline-flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.35em' }}>
+      {words.map((word, wIdx) => {
+        const letters = word.split('');
+        return (
+          <span key={wIdx} style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>
+            {letters.map((ch, lIdx) => {
+              const charIdx = globalCharIndex++;
+              return (
+                <motion.span
+                  key={lIdx}
+                  initial={{ opacity: 0, x: charIdx % 2 === 0 ? -14 : 14 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: charIdx * 0.018, duration: 0.28, ease: 'easeOut' }}
+                  style={{ display: 'inline-block', color }}
+                >
+                  {ch}
+                </motion.span>
+              );
+            })}
+          </span>
+        );
+      })}
     </span>
   );
 }

@@ -24,10 +24,11 @@ function getTimeUntilMonday(): { days: number; hours: number; mins: number; secs
 
 export const UnitCountdownBanner: React.FC = () => {
   const [mounted, setMounted] = useState(false);
-  const [countdown, setCountdown] = useState(getTimeUntilMonday());
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
 
   useEffect(() => {
     setMounted(true);
+    setCountdown(getTimeUntilMonday());
     const timer = setInterval(() => setCountdown(getTimeUntilMonday()), 1000);
     return () => clearInterval(timer);
   }, []);
