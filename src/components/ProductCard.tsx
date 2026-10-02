@@ -224,7 +224,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
                   borderRadius: '4px',
                   width: 'fit-content'
                 }}>
-                  <span>⚡ Free Weekend Pass</span>
+                  <span>Free Weekend Pass</span>
                 </div>
                 {renderDownloadButtons()}
               </div>
@@ -298,7 +298,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
                     width: '100%',
                   }}
                 >
-                  <span>⚡ Weekend Free Pass — Skip Payment & Download</span>
+                  <span>Weekend Free Pass — Skip Payment & Download</span>
                 </button>
               )}
             </form>

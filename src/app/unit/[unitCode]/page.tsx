@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { UNITS, getUnitByCode } from '@/lib/data';
 import { UnitBatchView } from '@/components/UnitBatchView';
+import { UnitCountdownBanner } from '@/components/UnitCountdownBanner';
 
 interface UnitPageProps {
   params: Promise<{
@@ -67,6 +68,8 @@ export default async function UnitPage({ params }: UnitPageProps) {
           <p className="unit-detail-lecturer">{unit.lecturer}</p>
         )}
       </section>
+
+      <UnitCountdownBanner />
 
       <UnitBatchView unit={unit} />
 

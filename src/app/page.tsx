@@ -9,8 +9,6 @@ import { FormatIcon } from '@/components/FormatIcon';
 import { StaggerWords } from '@/components/text-animations/StaggerWords';
 import { ConvergeLetters } from '@/components/text-animations/ConvergeLetters';
 import { WipeReveal } from '@/components/text-animations/WipeReveal';
-import { FreeWeekendBanner } from '@/components/FreeWeekendBanner';
-import { isFreeWeekend } from '@/lib/config';
 
 const TOTAL_PAGES = 6;
 
@@ -210,8 +208,6 @@ export default function HomePage() {
 
   return (
     <>
-      {isFreeWeekend() && <FreeWeekendBanner />}
-
       {/* ─── Loader ─────────────────────────────────────────── */}
       <AnimatePresence>
         {showLoader && (
@@ -304,10 +300,9 @@ export default function HomePage() {
 
         {/* Floating Header */}
         <header style={{
-          position: 'fixed', top: 'var(--fwb-h, 0px)', left: 0, right: 0, height: '4.25rem', zIndex: 60,
+          position: 'fixed', top: 0, left: 0, right: 0, height: '4.25rem', zIndex: 60,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 1.5rem', maxWidth: '1180px', margin: '0 auto', pointerEvents: 'none',
-          transition: 'top 0.2s ease',
         }}>
           <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span style={{
