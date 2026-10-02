@@ -6,8 +6,7 @@ import { PriceTag } from './PriceTag';
 import { PhoneInput } from './PhoneInput';
 import { StatusBanner } from './StatusBanner';
 import { DownloadButton } from './DownloadButton';
-
-const FREE_WEEKEND = process.env.NEXT_PUBLIC_FREE_WEEKEND === 'true';
+import { isFreeWeekend } from '@/lib/config';
 
 interface ProductCardProps {
   product: Product;
@@ -17,6 +16,7 @@ interface ProductCardProps {
 type CardState = 'idle' | 'entering_phone' | 'waiting' | 'paid' | 'failed' | 'timeout';
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) => {
+  const freeWeekend = isFreeWeekend();
   const [state, setState] = useState<CardState>('idle');
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
@@ -202,12 +202,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
             <p className="product-card-title">{product.name}</p>
             <p className="product-card-desc">{product.description}</p>
           </div>
-          <PriceTag amount={product.price} variant={isBlue ? 'blue' : 'teal'} freeMode={FREE_WEEKEND} />
+          <PriceTag amount={product.price} variant={isBlue ? 'blue' : 'teal'} freeMode={freeWeekend} />
         </div>
 
         <div className="product-card-action">
           {state === 'idle' && (
-            FREE_WEEKEND ? (
+            freeWeekend ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
                 <div style={{
                   display: 'inline-flex',
@@ -274,6 +274,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
                   {isSubmitting ? 'Sending STK...' : `Pay KSH ${product.price}`}
                 </button>
               </div>
+
+              {freeWeekend && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDownloadUrl(getProductRealDownloadUrl());
+                    setState('paid');
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                    background: 'rgba(34, 197, 94, 0.12)',
+                    border: '1px solid rgba(34, 197, 94, 0.35)',
+                    color: '#15803d',
+                    fontSize: '0.8rem',
+                    padding: '0.55rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    width: '100%',
+                  }}
+                >
+                  <span>⚡ Weekend Free Pass — Skip Payment & Download</span>
+                </button>
+              )}
             </form>
           )}
 

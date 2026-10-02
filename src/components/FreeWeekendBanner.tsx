@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { isFreeWeekend } from '@/lib/config';
 
 // ─── FREE WEEKEND BANNER ──────────────────────────────────────────────────────
 // This component auto-hides when sessionStorage flag is set (dismissed).
-// It is only rendered when NEXT_PUBLIC_FREE_WEEKEND=true.
-// To remove it permanently: flip the env var — no code changes needed.
+// It is only rendered when isFreeWeekend() is true.
+// To remove it permanently: set FREE_WEEKEND_ACTIVE = false in config.ts or flip env var.
 
 function getTimeUntilMonday(): { days: number; hours: number; mins: number; secs: number } {
   const now = new Date();
@@ -31,6 +32,7 @@ export const FreeWeekendBanner: React.FC = () => {
   const [countdown, setCountdown] = useState(getTimeUntilMonday());
 
   useEffect(() => {
+    if (!isFreeWeekend()) return;
     // Check sessionStorage — if already dismissed this session, stay hidden
     const isDismissed = sessionStorage.getItem('fwb-dismissed') === '1';
     if (!isDismissed) {
@@ -43,6 +45,7 @@ export const FreeWeekendBanner: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!isFreeWeekend()) return;
     const timer = setInterval(() => setCountdown(getTimeUntilMonday()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -53,7 +56,7 @@ export const FreeWeekendBanner: React.FC = () => {
     document.documentElement.style.setProperty('--fwb-h', '0px');
   };
 
-  if (dismissed) return null;
+  if (dismissed || !isFreeWeekend()) return null;
 
   const pad = (n: number) => String(n).padStart(2, '0');
 

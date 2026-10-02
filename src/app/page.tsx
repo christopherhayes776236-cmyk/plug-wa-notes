@@ -10,8 +10,7 @@ import { StaggerWords } from '@/components/text-animations/StaggerWords';
 import { ConvergeLetters } from '@/components/text-animations/ConvergeLetters';
 import { WipeReveal } from '@/components/text-animations/WipeReveal';
 import { FreeWeekendBanner } from '@/components/FreeWeekendBanner';
-
-const FREE_WEEKEND = process.env.NEXT_PUBLIC_FREE_WEEKEND === 'true';
+import { isFreeWeekend } from '@/lib/config';
 
 const TOTAL_PAGES = 6;
 
@@ -35,29 +34,6 @@ export default function HomePage() {
   const touchStartYRef = useRef(0);
   const [animKey, setAnimKey] = useState(0);
   const router = useRouter();
-
-  // ─── Share with classmates ───────────────────────────────────
-  const [shareCopied, setShareCopied] = useState(false);
-  const handleShare = async () => {
-    const shareData = {
-      title: 'Plug Wa Notes - Free Weekend Access',
-      text: 'Pata notes zote, audio, video & revision slides for SOEN 220, SOEN 221, SOEN 222, SOEN 223, COMP 200, COMP 224! Free this weekend on Plug Wa Notes:',
-      url: typeof window !== 'undefined' ? window.location.origin : 'https://plug-wa-notes.vercel.app',
-    };
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch {
-        // User cancelled or share dismissed
-      }
-    }
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      await navigator.clipboard.writeText(shareData.url);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2500);
-    }
-  };
 
   // ─── Media playback refs and states ──────────────────────────
   const notesVideoRef = useRef<HTMLVideoElement>(null);
@@ -234,7 +210,7 @@ export default function HomePage() {
 
   return (
     <>
-      {FREE_WEEKEND && <FreeWeekendBanner />}
+      {isFreeWeekend() && <FreeWeekendBanner />}
 
       {/* ─── Loader ─────────────────────────────────────────── */}
       <AnimatePresence>
@@ -445,51 +421,19 @@ export default function HomePage() {
 
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem', gap: '0.75rem', flexWrap: 'wrap',
+              borderTop: '1px solid #E2E8F0', paddingTop: '1.25rem',
             }}>
               <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Swipe up or scroll to start</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  id="share-classmates-btn"
-                  onClick={handleShare}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    padding: '0.65rem 0.95rem',
-                    backgroundColor: '#F0FDF4',
-                    color: '#15803D',
-                    border: '1px solid #BBF7D0',
-                    fontSize: '0.8125rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    borderRadius: '4px',
-                    transition: 'all 0.15s ease',
-                  }}
-                  title="Share link with classmates"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="18" cy="5" r="3"></circle>
-                    <circle cx="6" cy="12" r="3"></circle>
-                    <circle cx="18" cy="19" r="3"></circle>
-                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                  </svg>
-                  <span>{shareCopied ? 'Copied! ✓' : 'Share 📲'}</span>
-                </button>
-
-                <button
-                  onClick={nextPage}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                    padding: '0.65rem 1.35rem', backgroundColor: '#1E40AF', color: '#FFFFFF',
-                    fontSize: '0.8125rem', fontWeight: 500, border: 'none', cursor: 'pointer',
-                  }}
-                >
-                  <span>Pata Notes</span><span>↓</span>
-                </button>
-              </div>
+              <button
+                onClick={nextPage}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.65rem 1.35rem', backgroundColor: '#1E40AF', color: '#FFFFFF',
+                  fontSize: '0.8125rem', fontWeight: 500, border: 'none', cursor: 'pointer',
+                }}
+              >
+                <span>Pata Notes</span><span>↓</span>
+              </button>
             </div>
           </section>
 
