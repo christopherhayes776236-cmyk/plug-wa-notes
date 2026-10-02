@@ -526,14 +526,14 @@ export default function HomePage() {
                 />
               </h2>
 
-              {/* Video Player Card */}
+              {/* Video Player Card (Optimized for Vertical 9:16) */}
               <div style={{
                 width: '100%',
-                maxWidth: '520px',
-                borderRadius: '12px',
+                maxWidth: '280px',
+                borderRadius: '16px',
                 overflow: 'hidden',
                 border: '1px solid #E2E8F0',
-                boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
                 backgroundColor: '#0F172A',
                 position: 'relative',
               }}>
@@ -549,7 +549,7 @@ export default function HomePage() {
                   onEnded={() => setVideoPlaying(false)}
                   onTouchStart={(e) => e.stopPropagation()}
                   onTouchEnd={(e) => e.stopPropagation()}
-                  style={{ width: '100%', maxHeight: '280px', display: 'block' }}
+                  style={{ width: '100%', maxHeight: '350px', objectFit: 'contain', display: 'block' }}
                 />
               </div>
 

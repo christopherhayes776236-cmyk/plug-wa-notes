@@ -111,97 +111,97 @@ function week13Section(products: Product[]): WeekSection {
   };
 }
 
-function week4Products(
+function week45Products(
   prefix: string,
   videoDescription: string,
   notesOverride?: Product[]
 ): Product[] {
   const notes: Product[] = notesOverride ?? [
     {
-      id: `${prefix}-w4-notes`,
+      id: `${prefix}-w45-notes`,
       type: 'notes',
-      name: 'Week 4 notes PDF',
-      description: 'Comprehensive, exam-focused lecture notes for week 4.',
+      name: 'Weeks 4–5 notes PDF',
+      description: 'Comprehensive, exam-focused lecture notes for weeks 4–5.',
       price: 1,
       thumbnailSrc: thumb(`${prefix}-notes`),
-      fileUrl: `/units/${prefix}/notes-w4.pdf`,
+      fileUrl: `/units/${prefix}/notes-w45.pdf`,
     },
   ];
 
   return [
     ...notes,
     {
-      id: `${prefix}-w4-audio`,
+      id: `${prefix}-w45-audio`,
       type: 'audio',
-      name: 'Week 4 audio overview',
-      description: 'Audio highlight breakdown of week 4 core principles.',
+      name: 'Weeks 4–5 audio overview',
+      description: 'Audio highlight breakdown of weeks 4–5 core principles.',
       price: 3,
       thumbnailSrc: thumb(`${prefix}-video`),
-      fileUrl: `/units/${prefix}/audio-w4.m4a`,
+      fileUrl: `/units/${prefix}/audio-w45.m4a`,
     },
     {
-      id: `${prefix}-w4-video`,
+      id: `${prefix}-w45-video`,
       type: 'video',
-      name: 'Week 4 explainer video',
+      name: 'Weeks 4–5 explainer video',
       description: videoDescription,
       price: 5,
       thumbnailSrc: thumb(`${prefix}-video`),
-      fileUrl: `/units/${prefix}/video-w4.mp4`,
+      fileUrl: `/units/${prefix}/video-w45.mp4`,
     },
     {
-      id: `${prefix}-w4-video-slides`,
+      id: `${prefix}-w45-video-slides`,
       type: 'videoSlides',
-      name: 'Week 4 video + slides pack',
-      description: 'Full week 4 video walkthrough plus slide decks for quick revision.',
+      name: 'Weeks 4–5 video + slides pack',
+      description: 'Full weeks 4–5 video walkthrough plus slide decks for quick revision.',
       price: 7,
       thumbnailSrc: thumb(`${prefix}-video-slides`),
-      fileUrl: `/units/${prefix}/video-w4.mp4`,
+      fileUrl: `/units/${prefix}/video-w45.mp4`,
       files: [
         {
-          name: 'Week 4 Explainer Video (MP4)',
-          fileUrl: `/units/${prefix}/video-w4.mp4`,
-          fileName: `${prefix}-w4-explainer-video.mp4`,
+          name: 'Weeks 4–5 Explainer Video (MP4)',
+          fileUrl: `/units/${prefix}/video-w45.mp4`,
+          fileName: `${prefix}-w45-explainer-video.mp4`,
           type: 'video',
         },
         {
-          name: 'Week 4 Slide Deck (PDF)',
-          fileUrl: `/units/${prefix}/slides-w4.pdf`,
-          fileName: `${prefix}-w4-slides.pdf`,
+          name: 'Weeks 4–5 Slide Deck (PDF)',
+          fileUrl: `/units/${prefix}/slides-w45.pdf`,
+          fileName: `${prefix}-w45-slides.pdf`,
           type: 'slides',
         },
       ],
     },
     {
-      id: `${prefix}-w4-full-pack`,
+      id: `${prefix}-w45-full-pack`,
       type: 'fullPack',
-      name: 'Week 4 complete study pack',
-      description: 'All week 4 notes, explainer video, slides, and reference materials.',
+      name: 'Weeks 4–5 complete study pack',
+      description: 'All weeks 4–5 notes, explainer video, slides, and reference materials.',
       price: 10,
       thumbnailSrc: thumb(`${prefix}-full-pack`),
-      fileUrl: `/units/${prefix}/notes-w4.pdf`,
+      fileUrl: `/units/${prefix}/notes-w45.pdf`,
       files: [
         {
-          name: 'Week 4 Exam Notes (PDF)',
-          fileUrl: `/units/${prefix}/notes-w4.pdf`,
-          fileName: `${prefix}-w4-notes.pdf`,
+          name: 'Weeks 4–5 Exam Notes (PDF)',
+          fileUrl: `/units/${prefix}/notes-w45.pdf`,
+          fileName: `${prefix}-w45-notes.pdf`,
           type: 'notes',
         },
         {
-          name: 'Week 4 Slide Deck (PDF)',
-          fileUrl: `/units/${prefix}/slides-w4.pdf`,
-          fileName: `${prefix}-w4-slides.pdf`,
+          name: 'Weeks 4–5 Slide Deck (PDF)',
+          fileUrl: `/units/${prefix}/slides-w45.pdf`,
+          fileName: `${prefix}-w45-slides.pdf`,
           type: 'slides',
         },
         {
-          name: 'Week 4 Audio Breakdown (M4A)',
-          fileUrl: `/units/${prefix}/audio-w4.m4a`,
-          fileName: `${prefix}-w4-audio-breakdown.m4a`,
+          name: 'Weeks 4–5 Audio Breakdown (M4A)',
+          fileUrl: `/units/${prefix}/audio-w45.m4a`,
+          fileName: `${prefix}-w45-audio-breakdown.m4a`,
           type: 'audio',
         },
         {
-          name: 'Week 4 Explainer Video (MP4)',
-          fileUrl: `/units/${prefix}/video-w4.mp4`,
-          fileName: `${prefix}-w4-explainer-video.mp4`,
+          name: 'Weeks 4–5 Explainer Video (MP4)',
+          fileUrl: `/units/${prefix}/video-w45.mp4`,
+          fileName: `${prefix}-w45-explainer-video.mp4`,
           type: 'video',
         },
       ],
@@ -209,13 +209,65 @@ function week4Products(
   ];
 }
 
-function week4Section(products: Product[]): WeekSection {
+function week45Section(products: Product[]): WeekSection {
   return {
-    id: 'week-4',
-    title: 'Week 4',
+    id: 'week-4-5',
+    title: 'Weeks 4–5',
     badge: 'NEW',
-    subtitle: 'Latest batch — week 4 lecture breakdown, notes, slides, and walkthrough.',
+    subtitle: 'Latest batch — weeks 4–5 lecture breakdown, notes, slides, and walkthrough.',
     products,
+  };
+}
+
+function soen220AssignmentSection(): WeekSection {
+  return {
+    id: 'soen220-assignment',
+    title: 'Weeks 4–5 Assignment Pack',
+    badge: 'ASSIGNMENT',
+    subtitle: 'Dedicated walkthrough video and solution notes for the SOEN 220 assignment.',
+    products: [
+      {
+        id: 'soen220-asg-notes',
+        type: 'notes',
+        name: 'Assignment Solution Notes (PDF)',
+        description: 'Complete step-by-step written guide and solutions for the weeks 4–5 assignment.',
+        price: 1,
+        thumbnailSrc: thumb('soen220-notes'),
+        fileUrl: '/units/soen220/assignment-notes.pdf',
+      },
+      {
+        id: 'soen220-asg-video',
+        type: 'video',
+        name: 'Assignment Video Overview (MP4)',
+        description: 'Detailed video walkthrough explaining each question and concept in the assignment.',
+        price: 5,
+        thumbnailSrc: thumb('soen220-video'),
+        fileUrl: '/units/soen220/assignment-video.mp4',
+      },
+      {
+        id: 'soen220-asg-full-pack',
+        type: 'fullPack',
+        name: 'Assignment Complete Pack',
+        description: 'Everything you need for the assignment — video overview plus written solution notes.',
+        price: 5,
+        thumbnailSrc: thumb('soen220-full-pack'),
+        fileUrl: '/units/soen220/assignment-notes.pdf',
+        files: [
+          {
+            name: 'Assignment Solution Notes (PDF)',
+            fileUrl: '/units/soen220/assignment-notes.pdf',
+            fileName: 'soen220-assignment-notes.pdf',
+            type: 'notes',
+          },
+          {
+            name: 'Assignment Video Overview (MP4)',
+            fileUrl: '/units/soen220/assignment-video.mp4',
+            fileName: 'soen220-assignment-video.mp4',
+            type: 'video',
+          },
+        ],
+      },
+    ],
   };
 }
 
@@ -226,6 +278,9 @@ export const UNITS: Unit[] = [
     description: 'Sets, relations, functions, propositional logic, and combinatorics designed for computing systems.',
     lecturer: 'Silas Momanyi',
     sections: [
+      week45Section(
+        week45Products('comp102', 'Comprehensive problem-solving breakdown for sets, relations & functions.')
+      ),
       week13Section(
         week13Products('comp102', 'Concise visual walkthrough of core problem solving.')
       ),
@@ -237,6 +292,9 @@ export const UNITS: Unit[] = [
     description: 'System modeling, UML diagrams, use case analysis, design patterns, and architectural abstractions.',
     lecturer: 'Catherine Wangari',
     sections: [
+      week45Section(
+        week45Products('soen201', 'UML design patterns, state diagrams, and architectural principles.')
+      ),
       week13Section(
         week13Products('soen201', 'Concise visual walkthrough of UML and modeling cases.')
       ),
@@ -248,6 +306,9 @@ export const UNITS: Unit[] = [
     description: 'Modern web architecture, HTML5 semantics, responsive CSS, client-side JavaScript, and HTTP fundamentals.',
     lecturer: 'Silas Momanyi',
     sections: [
+      week45Section(
+        week45Products('soen202', 'Deep dive into responsive layout mechanics, DOM manipulation, and HTTP.')
+      ),
       week13Section(
         week13Products('soen202', 'Code-along walkthrough of web concepts and exam questions.')
       ),
@@ -259,6 +320,9 @@ export const UNITS: Unit[] = [
     description: 'Relational data models, normalization (1NF-BCNF), SQL querying, indexing, and transaction management.',
     lecturer: 'Verah Nyagoto',
     sections: [
+      week45Section(
+        week45Products('soen203', 'Advanced relational algebra, SQL optimization, and database normalization.')
+      ),
       week13Section(
         week13Products('soen203', 'Step-by-step queries, schema design, and normalization breakdown.')
       ),
@@ -270,6 +334,10 @@ export const UNITS: Unit[] = [
     description: 'OSI and TCP/IP stack layers, transmission media, subnetting, routing protocols, and socket communication.',
     lecturer: 'Rebecca Arikas',
     sections: [
+      week45Section(
+        week45Products('soen220', 'Transmission media, packet routing mechanics, and subnet calculations.')
+      ),
+      soen220AssignmentSection(),
       week13Section(
         week13Products('soen220', 'Network packet flows, IP subnetting math, and routing explained.', [
           {
@@ -300,6 +368,9 @@ export const UNITS: Unit[] = [
     description: 'Encapsulation, inheritance, polymorphism, abstract classes, interfaces, and core Java exception handling.',
     lecturer: 'Dr. Joshua Okemwa',
     sections: [
+      week45Section(
+        week45Products('soen240', 'Java inheritance hierarchies, polymorphism patterns, and exception architecture.')
+      ),
       week13Section(
         week13Products('soen240', 'Object-oriented Java execution patterns and live code solutions.')
       ),
