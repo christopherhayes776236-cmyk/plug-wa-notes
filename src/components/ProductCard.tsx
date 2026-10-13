@@ -89,15 +89,28 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
   return (
     <>
       <div className="product-card">
-        <div className="product-card-thumb">
-          <img
-            src={product.thumbnailSrc}
-            alt={`${product.name} cover`}
-            width={640}
-            height={360}
-            loading="lazy"
-          />
-        </div>
+        {product.type === 'fullPack' && product.collagePreviews && product.collagePreviews.length > 0 ? (
+          <div className="product-card-thumb fullpack-collage">
+            <div className={`fullpack-collage-grid ${product.collagePreviews.length === 2 ? 'grid-2' : 'grid-4'}`}>
+              {product.collagePreviews.map((src, idx) => (
+                <div key={idx} className="fullpack-collage-tile">
+                  <img src={src} alt="" loading="lazy" />
+                </div>
+              ))}
+            </div>
+            <span className="fullpack-collage-badge">Full Pack</span>
+          </div>
+        ) : (
+          <div className="product-card-thumb">
+            <img
+              src={product.thumbnailSrc}
+              alt={`${product.name} cover`}
+              width={640}
+              height={360}
+              loading="lazy"
+            />
+          </div>
+        )}
 
         <div className="product-card-body">
           <div className="product-card-top">

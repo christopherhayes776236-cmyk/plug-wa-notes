@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findProduct, getUnitByCode } from '@/lib/data';
-import { initiateIntasendStkPush } from '@/lib/intasend';
+import { initiateIntasendStkPush, getIntasendConfig } from '@/lib/intasend';
 import { initiateStkPush } from '@/lib/mpesa';
 import { saveOrder } from '@/lib/ordersStore';
 
@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const hasIntasend = !!process.env.INTASEND_SECRET_KEY;
+    const intasendConfig = getIntasendConfig();
+    const hasIntasend = !!intasendConfig.secretKey;
     const hasDaraja = !!(process.env.MPESA_CONSUMER_KEY && process.env.MPESA_CONSUMER_SECRET);
 
     if (!hasIntasend && !hasDaraja) {

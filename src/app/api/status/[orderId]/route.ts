@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrder, updateOrderStatus } from '@/lib/ordersStore';
-import { queryIntasendStatus } from '@/lib/intasend';
+import { queryIntasendStatus, getIntasendConfig } from '@/lib/intasend';
 import { queryStkStatus } from '@/lib/mpesa';
 import { findProduct, getUnitByCode } from '@/lib/data';
 import { getProductDownloadUrl } from '@/lib/cloudinary';
@@ -31,8 +31,11 @@ export async function GET(
     // If pending, check order age in ms
     const orderAgeMs = Date.now() - new Date(order.createdAt).getTime();
 
+    const intasendConfig = getIntasendConfig();
+    const hasIntasend = !!intasendConfig.secretKey;
+
     // IntaSend status verification fallback
-    if (process.env.INTASEND_SECRET_KEY && order.status === 'pending' && orderAgeMs > 6000 && order.checkoutRequestId) {
+    if (hasIntasend && order.status === 'pending' && orderAgeMs > 6000 && order.checkoutRequestId) {
       try {
         const isStatus = await queryIntasendStatus(order.checkoutRequestId);
         if (isStatus.completed) {

@@ -1,8 +1,5 @@
 import { Product, Unit, WeekSection } from './types';
 
-function thumb(id: string): string {
-  return `/thumbnails/${id}.svg`;
-}
 
 function week13Products(
   prefix: string,
@@ -16,7 +13,7 @@ function week13Products(
       name: 'Clean notes PDF',
       description: 'Typed, exam-focused notes for weeks 1–3.',
       price: 1,
-      thumbnailSrc: thumb(`${prefix}-notes`),
+      thumbnailSrc: `/previews/${prefix}-notes.jpg`,
       fileUrl: `/units/${prefix}/notes.pdf`,
     },
   ];
@@ -29,7 +26,7 @@ function week13Products(
       name: 'Audio overview',
       description: 'Audio highlight breakdown for learning on the go.',
       price: 3,
-      thumbnailSrc: thumb(`${prefix}-video`),
+      thumbnailSrc: '/media/audio-placeholder.jpg',
       fileUrl: `/units/${prefix}/audio.m4a`,
     },
     {
@@ -38,7 +35,7 @@ function week13Products(
       name: 'Explainer video',
       description: videoDescription,
       price: 5,
-      thumbnailSrc: thumb(`${prefix}-video`),
+      thumbnailSrc: `/previews/${prefix}-video.jpg`,
       fileUrl: `/units/${prefix}/video.mp4`,
     },
     {
@@ -47,7 +44,7 @@ function week13Products(
       name: 'Video + slides pack',
       description: 'Full video walkthrough plus slide decks for quick revision.',
       price: 7,
-      thumbnailSrc: thumb(`${prefix}-video-slides`),
+      thumbnailSrc: `/previews/${prefix}-slides.jpg`,
       fileUrl: `/units/${prefix}/video.mp4`,
       files: [
         {
@@ -70,7 +67,13 @@ function week13Products(
       name: 'Complete study pack',
       description: 'All notes, explainer video, slides, and reference diagrams.',
       price: 10,
-      thumbnailSrc: thumb(`${prefix}-full-pack`),
+      thumbnailSrc: `/previews/${prefix}-notes.jpg`,
+      collagePreviews: [
+        `/previews/${prefix}-notes.jpg`,
+        `/previews/${prefix}-video.jpg`,
+        '/media/audio-placeholder.jpg',
+        `/previews/${prefix}-slides.jpg`,
+      ],
       fileUrl: `/units/${prefix}/notes.pdf`,
       files: [
         {
@@ -123,7 +126,7 @@ function week45Products(
       name: 'Weeks 4–5 notes PDF',
       description: 'Comprehensive, exam-focused lecture notes for weeks 4–5.',
       price: 1,
-      thumbnailSrc: thumb(`${prefix}-notes`),
+      thumbnailSrc: `/previews/${prefix}-w45-notes.jpg`,
       fileUrl: `/units/${prefix}/notes-w45.pdf`,
     },
   ];
@@ -136,7 +139,7 @@ function week45Products(
       name: 'Weeks 4–5 audio overview',
       description: 'Audio highlight breakdown of weeks 4–5 core principles.',
       price: 3,
-      thumbnailSrc: thumb(`${prefix}-video`),
+      thumbnailSrc: '/media/audio-placeholder.jpg',
       fileUrl: `/units/${prefix}/audio-w45.m4a`,
     },
     {
@@ -145,7 +148,7 @@ function week45Products(
       name: 'Weeks 4–5 explainer video',
       description: videoDescription,
       price: 5,
-      thumbnailSrc: thumb(`${prefix}-video`),
+      thumbnailSrc: `/previews/${prefix}-w45-video.jpg`,
       fileUrl: `/units/${prefix}/video-w45.mp4`,
     },
     {
@@ -154,7 +157,7 @@ function week45Products(
       name: 'Weeks 4–5 video + slides pack',
       description: 'Full weeks 4–5 video walkthrough plus slide decks for quick revision.',
       price: 7,
-      thumbnailSrc: thumb(`${prefix}-video-slides`),
+      thumbnailSrc: `/previews/${prefix}-w45-slides.jpg`,
       fileUrl: `/units/${prefix}/video-w45.mp4`,
       files: [
         {
@@ -177,7 +180,13 @@ function week45Products(
       name: 'Weeks 4–5 complete study pack',
       description: 'All weeks 4–5 notes, explainer video, slides, and reference materials.',
       price: 10,
-      thumbnailSrc: thumb(`${prefix}-full-pack`),
+      thumbnailSrc: `/previews/${prefix}-w45-notes.jpg`,
+      collagePreviews: [
+        `/previews/${prefix}-w45-notes.jpg`,
+        `/previews/${prefix}-w45-video.jpg`,
+        '/media/audio-placeholder.jpg',
+        `/previews/${prefix}-w45-slides.jpg`,
+      ],
       fileUrl: `/units/${prefix}/notes-w45.pdf`,
       files: [
         {
@@ -232,7 +241,7 @@ function soen220AssignmentSection(): WeekSection {
         name: 'Assignment Solution Notes (PDF)',
         description: 'Complete step-by-step written guide and solutions for the weeks 4–5 assignment.',
         price: 1,
-        thumbnailSrc: thumb('soen220-notes'),
+        thumbnailSrc: '/previews/soen220-asg-notes.jpg',
         fileUrl: '/units/soen220/assignment-notes.pdf',
       },
       {
@@ -241,7 +250,7 @@ function soen220AssignmentSection(): WeekSection {
         name: 'Assignment Video Overview (MP4)',
         description: 'Detailed video walkthrough explaining each question and concept in the assignment.',
         price: 5,
-        thumbnailSrc: thumb('soen220-video'),
+        thumbnailSrc: '/previews/soen220-asg-video.jpg',
         fileUrl: '/units/soen220/assignment-video.mp4',
       },
       {
@@ -250,7 +259,11 @@ function soen220AssignmentSection(): WeekSection {
         name: 'Assignment Complete Pack',
         description: 'Everything you need for the assignment — video overview plus written solution notes.',
         price: 5,
-        thumbnailSrc: thumb('soen220-full-pack'),
+        thumbnailSrc: '/previews/soen220-asg-notes.jpg',
+        collagePreviews: [
+          '/previews/soen220-asg-notes.jpg',
+          '/previews/soen220-asg-video.jpg',
+        ],
         fileUrl: '/units/soen220/assignment-notes.pdf',
         files: [
           {
@@ -270,6 +283,7 @@ function soen220AssignmentSection(): WeekSection {
     ],
   };
 }
+
 
 export const UNITS: Unit[] = [
   {
@@ -346,7 +360,7 @@ export const UNITS: Unit[] = [
             name: 'Weeks 1–2 notes',
             description: 'Typed notes covering data communication fundamentals for weeks 1–2.',
             price: 1,
-            thumbnailSrc: thumb('soen220-notes-w12'),
+            thumbnailSrc: '/previews/soen220-notes-w12.jpg',
             fileUrl: '/units/soen220/notes-w12.pdf',
           },
           {
@@ -355,7 +369,7 @@ export const UNITS: Unit[] = [
             name: 'Week 3 notes',
             description: 'Network topology notes for week 3.',
             price: 1,
-            thumbnailSrc: thumb('soen220-notes-w3'),
+            thumbnailSrc: '/previews/soen220-notes-w3.jpg',
             fileUrl: '/units/soen220/notes-w3.pdf',
           },
         ])

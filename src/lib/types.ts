@@ -16,6 +16,7 @@ export interface Product {
   files?: ProductFileItem[];
   previewSrc?: string;
   previewSlides?: string[];
+  collagePreviews?: string[];
 }
 
 
