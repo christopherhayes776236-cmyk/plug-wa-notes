@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrder, updateOrderStatus } from '@/lib/ordersStore';
+import { queryIntasendStatus } from '@/lib/intasend';
 import { queryStkStatus } from '@/lib/mpesa';
 import { findProduct, getUnitByCode } from '@/lib/data';
 import { getProductDownloadUrl } from '@/lib/cloudinary';
@@ -27,11 +28,40 @@ export async function GET(
       });
     }
 
-    // If pending, check order age in seconds
+    // If pending, check order age in ms
     const orderAgeMs = Date.now() - new Date(order.createdAt).getTime();
 
-    // Fallback: If pending for more than 20 seconds, actively query Daraja API
-    if (order.status === 'pending' && orderAgeMs > 20000 && order.checkoutRequestId) {
+    // IntaSend status verification fallback
+    if (process.env.INTASEND_SECRET_KEY && order.status === 'pending' && orderAgeMs > 6000 && order.checkoutRequestId) {
+      try {
+        const isStatus = await queryIntasendStatus(order.checkoutRequestId);
+        if (isStatus.completed) {
+          const unit = getUnitByCode(order.unitCode);
+          const product = unit
+            ? findProduct(unit, { productId: order.productId, productType: order.productType })
+            : undefined;
+          const downloadUrl = getProductDownloadUrl(order.unitCode, order.productType, product?.fileUrl);
+
+          await updateOrderStatus(orderId, 'paid', downloadUrl);
+
+          return NextResponse.json({
+            status: 'paid',
+            fileUrl: downloadUrl,
+          });
+        } else if (isStatus.failed) {
+          await updateOrderStatus(orderId, 'failed');
+          return NextResponse.json({
+            status: 'failed',
+            message: 'Payment was cancelled or failed.',
+          });
+        }
+      } catch (err) {
+        console.warn('IntaSend status inquiry warning:', err);
+      }
+    }
+
+    // Safaricom Daraja fallback: If pending for more than 20 seconds
+    if (!process.env.INTASEND_SECRET_KEY && order.status === 'pending' && orderAgeMs > 20000 && order.checkoutRequestId) {
       try {
         const queryRes = await queryStkStatus(order.checkoutRequestId);
 
@@ -71,14 +101,13 @@ export async function GET(
           });
         }
       } catch (queryErr) {
-        // Query error, let frontend continue polling until 60s timeout
         console.warn('Daraja fallback query attempt error:', queryErr);
       }
     }
 
-    // For sandbox local testing without active Daraja API keys:
-    // Auto-approve test orders after 6 seconds if running in pure dev mode without Mpesa keys
+    // For sandbox local testing without active keys:
     if (
+      !process.env.INTASEND_SECRET_KEY &&
       !process.env.MPESA_CONSUMER_KEY &&
       order.status === 'pending' &&
       orderAgeMs > 6000

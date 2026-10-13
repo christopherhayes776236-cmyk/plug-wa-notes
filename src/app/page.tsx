@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UNITS } from '@/lib/data';
@@ -18,17 +17,6 @@ const springTransition = { duration: 0.52, ease: [0.16, 1, 0.3, 1] as [number, n
 const AUDIO_TEXT = 'Usiache kuosha viombo iku prevent from catching up, kua sharp boy/girl skiza audio overview';
 
 export default function HomePage() {
-  // ─── Loader state (client-only to avoid hydration mismatch) ───
-  const [mounted, setMounted] = useState(false);
-  const [showLoader, setShowLoader] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    setShowLoader(true);
-    const timer = setTimeout(() => setShowLoader(false), 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
   // ─── Page navigation ─────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(0);
   const isTransitioningRef = useRef(false);
@@ -152,8 +140,6 @@ export default function HomePage() {
 
   // ─── Wheel + Keyboard ────────────────────────────────────────
   useEffect(() => {
-    if (showLoader) return;
-
     const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
       const unitGrid = target.closest('.unit-grid') as HTMLElement | null;
@@ -218,7 +204,7 @@ export default function HomePage() {
       window.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKey);
     };
-  }, [showLoader, nextPage, prevPage, currentPage, notesVideoPlaying, videoPlaying, audioPlaying]);
+  }, [nextPage, prevPage, currentPage, notesVideoPlaying, videoPlaying, audioPlaying]);
 
   // ─── Touch ───────────────────────────────────────────────────
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -239,94 +225,11 @@ export default function HomePage() {
 
   return (
     <>
-      {/* ─── Loader ─────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showLoader && (
-          <motion.div
-            key="loader"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 9999,
-              backgroundColor: '#F6F4EF',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '1.5rem',
-            }}
-          >
-            {/* Study / Cramming GIF Container */}
-            <div
-              style={{
-                width: 'min(86vw, 280px)',
-                borderRadius: '16px',
-                overflow: 'hidden',
-                boxShadow: '0 12px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06)',
-                border: '1px solid rgba(0, 0, 0, 0.08)',
-                backgroundColor: '#000',
-                marginBottom: '1.25rem',
-              }}
-            >
-              <picture>
-                <source srcSet="/media/kid-study.webp" type="image/webp" />
-                <img
-                  src="/media/kid-study.gif"
-                  alt="Loading..."
-                  loading="eager"
-                  decoding="async"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      'https://res.cloudinary.com/nd4ofxfu/image/upload/v1789866745/plug-wa-notes/kid-study.gif';
-                  }}
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    display: 'block',
-                    aspectRatio: '4 / 3',
-                    objectFit: 'cover',
-                  }}
-                />
-              </picture>
-            </div>
-
-            <div
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 600,
-                fontSize: '1.35rem',
-                color: '#0F172A',
-                letterSpacing: '-0.02em',
-                textAlign: 'center',
-              }}
-            >
-              Plug Wa Notes
-            </div>
-
-            <div
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.8125rem',
-                color: '#64748B',
-                marginTop: '0.25rem',
-                textAlign: 'center',
-              }}
-            >
-              Loading study materials…
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ─── Full-page container ────────────────────────────── */}
       <div
         className="fullpage-wrapper"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        style={{ opacity: mounted && showLoader ? 0 : 1, transition: mounted ? 'opacity 0.3s ease' : 'none' }}
       >
 
         {/* Floating Header */}

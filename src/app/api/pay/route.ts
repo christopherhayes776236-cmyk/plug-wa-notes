@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findProduct, getUnitByCode } from '@/lib/data';
+import { initiateIntasendStkPush } from '@/lib/intasend';
 import { initiateStkPush } from '@/lib/mpesa';
 import { saveOrder } from '@/lib/ordersStore';
 
@@ -30,9 +31,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!process.env.MPESA_CONSUMER_KEY || !process.env.MPESA_CONSUMER_SECRET) {
+    const hasIntasend = !!process.env.INTASEND_SECRET_KEY;
+    const hasDaraja = !!(process.env.MPESA_CONSUMER_KEY && process.env.MPESA_CONSUMER_SECRET);
+
+    if (!hasIntasend && !hasDaraja) {
       return NextResponse.json(
-        { error: 'M-Pesa is not connected yet. Payment keys will be added soon.' },
+        { error: 'M-Pesa payment gateway is not connected yet.' },
         { status: 503 }
       );
     }
@@ -59,12 +63,29 @@ export async function POST(req: NextRequest) {
 
     const orderId = `PWN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    const stkResult = await initiateStkPush({
-      phone,
-      amount: product.price,
-      orderId,
-      description: `${unit.code} ${product.name}`.slice(0, 30),
-    });
+    let checkoutRequestId = '';
+    let customerMessage = 'Please enter your M-Pesa PIN on your phone.';
+
+    if (hasIntasend) {
+      const intasendResult = await initiateIntasendStkPush({
+        phone,
+        amount: product.price,
+        orderId,
+        description: `Plug wa notes - ${unit.code}`.slice(0, 30),
+        accountReference: 'Plug wa notes',
+      });
+      checkoutRequestId = intasendResult.checkoutRequestId;
+      customerMessage = intasendResult.customerMessage;
+    } else {
+      const stkResult = await initiateStkPush({
+        phone,
+        amount: product.price,
+        orderId,
+        description: `${unit.code} ${product.name}`.slice(0, 30),
+      });
+      checkoutRequestId = stkResult.checkoutRequestId;
+      customerMessage = stkResult.customerMessage;
+    }
 
     await saveOrder({
       id: orderId,
@@ -75,15 +96,15 @@ export async function POST(req: NextRequest) {
       phone,
       amount: product.price,
       status: 'pending',
-      checkoutRequestId: stkResult.checkoutRequestId,
+      checkoutRequestId,
       createdAt: new Date().toISOString(),
     });
 
     return NextResponse.json({
       success: true,
       orderId,
-      checkoutRequestId: stkResult.checkoutRequestId,
-      message: stkResult.customerMessage,
+      checkoutRequestId,
+      message: customerMessage,
     });
   } catch (error: unknown) {
     console.error('Payment initiation error:', error);

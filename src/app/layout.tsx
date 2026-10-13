@@ -43,8 +43,68 @@ export default function RootLayout({
         />
         <link rel="preload" as="image" href="/media/kid-study.webp" type="image/webp" />
         <link rel="preload" as="image" href="/media/slides/image1.png" />
+        <style dangerouslySetInnerHTML={{ __html: `
+          #splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background-color: #F6F4EF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            animation: splashFadeOut 0.25s ease 1.5s forwards;
+            pointer-events: none;
+          }
+          @keyframes splashFadeOut {
+            to { opacity: 0; visibility: hidden; }
+          }
+          #splash-img-wrap {
+            width: min(86vw, 280px);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 12px 32px -4px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.08);
+            background-color: #000;
+            margin-bottom: 1.25rem;
+          }
+          #splash-img-wrap img {
+            width: 100%;
+            height: auto;
+            display: block;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+          }
+          #splash-title {
+            font-family: 'Space Grotesk', system-ui, sans-serif;
+            font-weight: 600;
+            font-size: 1.35rem;
+            color: #0F172A;
+            letter-spacing: -0.02em;
+            text-align: center;
+          }
+          #splash-sub {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 0.8125rem;
+            color: #64748B;
+            margin-top: 0.25rem;
+            text-align: center;
+          }
+        `}} />
       </head>
       <body className="min-h-full flex flex-col bg-[#F6F4EF] text-[#23211E]">
+        {/* Splash screen — pure HTML/CSS, renders before any JS runs */}
+        <div id="splash-screen" aria-hidden="true">
+          <div id="splash-img-wrap">
+            <picture>
+              <source srcSet="/media/kid-study.webp" type="image/webp" />
+              <img src="/media/kid-study.gif" alt="" />
+            </picture>
+          </div>
+          <div id="splash-title">Plug Wa Notes</div>
+          <div id="splash-sub">Loading study materials...</div>
+        </div>
         {children}
         <InstallPrompt />
         <Script

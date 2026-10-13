@@ -5,7 +5,7 @@
  * Set to `true` to give students free 1-tap downloads for the weekend.
  * Set to `false` when Safaricom paybill is live to effortlessly revert to paid M-Pesa mode.
  */
-export const FREE_WEEKEND_ACTIVE = true;
+export const FREE_WEEKEND_ACTIVE = false;
 
 /**
  * Checks if Free Weekend mode is currently active.

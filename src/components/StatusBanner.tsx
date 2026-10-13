@@ -15,6 +15,7 @@ export const StatusBanner: React.FC<StatusBannerProps> = ({ status, message, pho
         padding: '1rem',
         background: 'var(--blue-tint)',
         border: '1px solid rgba(36, 80, 200, 0.3)',
+        borderRadius: '6px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
           {/* Spinner via CSS animation */}
@@ -28,12 +29,15 @@ export const StatusBanner: React.FC<StatusBannerProps> = ({ status, message, pho
             animation: 'spin 0.75s linear infinite',
             flexShrink: 0,
           }} />
-          <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--blue)' }}>
-            Prompt sent to {phone || 'your phone'}
+          <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--blue)' }}>
+            M-Pesa prompt sent to {phone || 'your phone'}
           </p>
         </div>
-        <p style={{ fontSize: '0.75rem', color: 'var(--ink-muted)', paddingLeft: '1.75rem' }}>
-          Please check your phone screen and enter your M-Pesa PIN to complete the transaction.
+        <p style={{ fontSize: '0.75rem', color: 'var(--ink)', paddingLeft: '1.75rem', marginBottom: '0.4rem', lineHeight: 1.4 }}>
+          Please check your phone and enter your M-Pesa PIN to complete payment.
+        </p>
+        <p style={{ fontSize: '0.7rem', color: 'var(--ink-muted)', paddingLeft: '1.75rem', lineHeight: 1.3 }}>
+          💡 <em>Note: The pop-up prompt will show our banking partner <strong>co-op-bank-stk-push</strong>.</em>
         </p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
