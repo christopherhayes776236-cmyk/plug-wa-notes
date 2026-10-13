@@ -134,7 +134,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       if (!res.ok) throw new Error(data.error || 'Failed to initiate M-Pesa STK push');
 
       setState('waiting');
-      startPolling(data.orderId, data.fileUrl);
+      startPolling(data.orderId, data.checkoutRequestId, data.fileUrl);
     } catch (err: unknown) {
       const message =
         err instanceof Error
@@ -147,14 +147,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     }
   };
 
-  const startPolling = (currentOrderId: string, fileUrlFromInit?: string) => {
+  const startPolling = (currentOrderId: string, checkoutRequestId?: string, fileUrlFromInit?: string) => {
     stopPolling();
     pollTimerRef.current = 0;
 
     pollIntervalRef.current = setInterval(async () => {
       pollTimerRef.current += 2.5;
 
-      if (pollTimerRef.current >= 60) {
+      if (pollTimerRef.current >= 75) {
         stopPolling();
         setState('timeout');
         setErrorMessage('Verification timed out. If money was deducted, save your M-Pesa code.');
@@ -162,7 +162,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       }
 
       try {
-        const res = await fetch(`/api/status/${currentOrderId}`);
+        const params = new URLSearchParams();
+        if (checkoutRequestId) params.set('invoiceId', checkoutRequestId);
+        if (unitCode) params.set('unit', unitCode);
+        if (product.id) params.set('product', product.id);
+        if (product.type) params.set('type', product.type);
+
+        const res = await fetch(`/api/status/${currentOrderId}?${params.toString()}`);
         if (!res.ok) return;
         const data = await res.json();
 

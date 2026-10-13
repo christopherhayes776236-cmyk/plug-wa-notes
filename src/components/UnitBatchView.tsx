@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Unit } from '@/lib/types';
 import { ProductCard } from './ProductCard';
 
@@ -21,11 +21,53 @@ export const UnitBatchView: React.FC<UnitBatchViewProps> = ({ unit }) => {
     return initial;
   });
 
+  // Track viewed section badges in localStorage so "NEW" disappears automatically once opened
+  const [viewedBadges, setViewedBadges] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('pwn_viewed_badges');
+      const parsed: Record<string, boolean> = stored ? JSON.parse(stored) : {};
+
+      const updated = { ...parsed };
+      let changed = false;
+
+      // Mark sections that are currently open as viewed
+      sections.forEach((sec) => {
+        const key = `${unit.code}_${sec.id}`;
+        if (openSections[sec.id] && !updated[key]) {
+          updated[key] = true;
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        localStorage.setItem('pwn_viewed_badges', JSON.stringify(updated));
+      }
+      setViewedBadges(updated);
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [unit.code]);
+
   const toggleSection = (sectionId: string) => {
+    const willBeOpen = !openSections[sectionId];
     setOpenSections((prev) => ({
       ...prev,
-      [sectionId]: !prev[sectionId],
+      [sectionId]: willBeOpen,
     }));
+
+    if (willBeOpen) {
+      const key = `${unit.code}_${sectionId}`;
+      setViewedBadges((prev) => {
+        if (prev[key]) return prev;
+        const next = { ...prev, [key]: true };
+        try {
+          localStorage.setItem('pwn_viewed_badges', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }
   };
 
   if (!sections.length) {
@@ -37,6 +79,8 @@ export const UnitBatchView: React.FC<UnitBatchViewProps> = ({ unit }) => {
       {sections.map((section) => {
         const isOpen = !!openSections[section.id];
         const productCount = section.products?.length || 0;
+        const sectionKey = `${unit.code}_${section.id}`;
+        const shouldShowBadge = section.badge && (section.badge !== 'NEW' || !viewedBadges[sectionKey]);
 
         return (
           <div
@@ -85,7 +129,7 @@ export const UnitBatchView: React.FC<UnitBatchViewProps> = ({ unit }) => {
                     {section.title}
                   </span>
 
-                  {section.badge && (
+                  {shouldShowBadge && (
                     <span
                       style={{
                         display: 'inline-flex',
@@ -99,6 +143,7 @@ export const UnitBatchView: React.FC<UnitBatchViewProps> = ({ unit }) => {
                         borderRadius: '9999px',
                         textTransform: 'uppercase',
                         lineHeight: 1.2,
+                        transition: 'opacity 0.2s ease',
                       }}
                     >
                       {section.badge}
@@ -124,22 +169,21 @@ export const UnitBatchView: React.FC<UnitBatchViewProps> = ({ unit }) => {
                   width: '32px',
                   height: '32px',
                   borderRadius: '50%',
-                  backgroundColor: isOpen ? '#0F172A' : 'rgba(15, 23, 42, 0.05)',
-                  color: isOpen ? '#FFFFFF' : '#0F172A',
+                  backgroundColor: isOpen ? '#0F172A' : '#F1F5F9',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
-                  transition: 'transform 0.25s ease, background-color 0.2s ease, color 0.2s ease',
+                  transition: 'background-color 0.2s ease, transform 0.2s ease',
                   transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                 }}
               >
                 <svg
-                  width="14"
-                  height="14"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="currentColor"
+                  stroke={isOpen ? '#FFFFFF' : '#475569'}
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -149,23 +193,21 @@ export const UnitBatchView: React.FC<UnitBatchViewProps> = ({ unit }) => {
               </div>
             </button>
 
-            {/* ─── Collapsible Dropdown Content ─── */}
+            {/* ─── Accordion Body ─── */}
             {isOpen && (
               <div
                 style={{
                   padding: '0 1.25rem 1.25rem 1.25rem',
                   borderTop: '1px solid rgba(15, 23, 42, 0.06)',
-                  paddingTop: '1.25rem',
+                  backgroundColor: '#FAFAF9',
                 }}
               >
-                <div className="products-stack" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {section.products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      unitCode={unit.code}
-                    />
-                  ))}
+                <div style={{ marginTop: '1.25rem' }}>
+                  <div className="products-stack">
+                    {section.products?.map((product) => (
+                      <ProductCard key={product.id} product={product} unitCode={unit.code} />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

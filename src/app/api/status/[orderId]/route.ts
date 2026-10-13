@@ -15,35 +15,40 @@ export async function GET(
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
 
-    const order = await getOrder(orderId);
-    if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
+    const { searchParams } = new URL(req.url);
+    const invoiceIdFromQuery = searchParams.get('invoiceId');
+    const unitCodeFromQuery = searchParams.get('unit');
+    const productIdFromQuery = searchParams.get('product');
+    const productTypeFromQuery = searchParams.get('type');
+
+    let order = await getOrder(orderId);
 
     // If order is already paid, return instantly
-    if (order.status === 'paid') {
+    if (order && order.status === 'paid') {
       return NextResponse.json({
         status: 'paid',
         fileUrl: order.fileUrl,
       });
     }
 
-    // If pending, check order age in ms
-    const orderAgeMs = Date.now() - new Date(order.createdAt).getTime();
+    const effectiveInvoiceId = invoiceIdFromQuery || order?.checkoutRequestId;
+    const effectiveUnitCode = unitCodeFromQuery || order?.unitCode;
+    const effectiveProductId = productIdFromQuery || order?.productId;
+    const effectiveProductType = productTypeFromQuery || order?.productType;
 
     const intasendConfig = getIntasendConfig();
     const hasIntasend = !!intasendConfig.secretKey;
 
-    // IntaSend status verification fallback
-    if (hasIntasend && order.status === 'pending' && orderAgeMs > 6000 && order.checkoutRequestId) {
+    // Direct IntaSend status verification (stateless, works across all lambda instances)
+    if (hasIntasend && effectiveInvoiceId) {
       try {
-        const isStatus = await queryIntasendStatus(order.checkoutRequestId);
+        const isStatus = await queryIntasendStatus(effectiveInvoiceId);
         if (isStatus.completed) {
-          const unit = getUnitByCode(order.unitCode);
+          const unit = effectiveUnitCode ? getUnitByCode(effectiveUnitCode) : undefined;
           const product = unit
-            ? findProduct(unit, { productId: order.productId, productType: order.productType })
+            ? findProduct(unit, { productId: effectiveProductId || undefined, productType: effectiveProductType || undefined })
             : undefined;
-          const downloadUrl = getProductDownloadUrl(order.unitCode, order.productType, product?.fileUrl);
+          const downloadUrl = getProductDownloadUrl(effectiveUnitCode || '', effectiveProductType || '', product?.fileUrl);
 
           await updateOrderStatus(orderId, 'paid', downloadUrl);
 
@@ -57,19 +62,22 @@ export async function GET(
             status: 'failed',
             message: 'Payment was cancelled or failed.',
           });
+        } else {
+          return NextResponse.json({
+            status: 'pending',
+          });
         }
       } catch (err) {
         console.warn('IntaSend status inquiry warning:', err);
       }
     }
 
-    // Safaricom Daraja fallback: If pending for more than 20 seconds
-    if (!process.env.INTASEND_SECRET_KEY && order.status === 'pending' && orderAgeMs > 20000 && order.checkoutRequestId) {
+    // Safaricom Daraja fallback if IntaSend not used
+    if (order && !hasIntasend && order.status === 'pending' && order.checkoutRequestId) {
       try {
         const queryRes = await queryStkStatus(order.checkoutRequestId);
 
         if (queryRes.resultCode === '0') {
-          // Success verified
           const unit = getUnitByCode(order.unitCode);
           const product = unit
             ? findProduct(unit, { productId: order.productId, productType: order.productType })
@@ -83,7 +91,6 @@ export async function GET(
             fileUrl: downloadUrl,
           });
         } else if (queryRes.resultCode) {
-          // Failure verified from Daraja
           const messageMap: Record<string, string> = {
             '1032': 'You cancelled the request on your phone.',
             '1037': 'Request timed out. Please keep your phone unlocked and try again.',
@@ -108,10 +115,16 @@ export async function GET(
       }
     }
 
+    if (order) {
+      return NextResponse.json({
+        status: order.status,
+        fileUrl: order.fileUrl,
+      });
+    }
 
+    // Still pending initiation or waiting for gateway
     return NextResponse.json({
-      status: order.status,
-      fileUrl: order.fileUrl,
+      status: 'pending',
     });
   } catch (error: any) {
     console.error('Order status check error:', error);
