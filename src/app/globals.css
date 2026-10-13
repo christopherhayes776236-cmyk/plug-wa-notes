@@ -889,22 +889,30 @@ button:active,
 .products-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.25rem;
 }
 
 .product-card {
   background: var(--white);
-  border: 1px solid var(--line);
+  border: 1.5px solid #CBD5E1;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
   overflow: hidden;
-  transition: background 150ms;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.product-card:hover {
+  border-color: #94A3B8;
+  box-shadow: 0 10px 20px -3px rgba(15, 23, 42, 0.12), 0 4px 6px -2px rgba(15, 23, 42, 0.05);
 }
 
 .product-card-thumb {
   width: 100%;
   aspect-ratio: 16 / 10;
-  background: #EEF2FF;
+  background: #E2E8F0;
   overflow: hidden;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1.5px solid #CBD5E1;
+  position: relative;
 }
 
 .product-card-thumb img {
@@ -912,6 +920,21 @@ button:active,
   height: 100%;
   display: block;
   object-fit: cover;
+  object-position: top center;
+}
+
+/* Framed matting for dense text PDF notes so text doesn't run edge-to-edge */
+.product-card-thumb.is-document {
+  background: #E2E8F0;
+  padding: 10px 14px 0 14px;
+}
+
+.product-card-thumb.is-document img {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  box-shadow: 0 -1px 4px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.15);
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-bottom: none;
 }
 
 .product-card-thumb.fullpack-collage {
@@ -923,7 +946,7 @@ button:active,
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 1.5px;
-  background: var(--line);
+  background: #CBD5E1;
   width: 100%;
   height: 100%;
 }
@@ -947,22 +970,42 @@ button:active,
   object-position: top center;
 }
 
-.fullpack-collage-badge {
+/* Distinct format badges across all cards */
+.product-card-badge {
   position: absolute;
-  bottom: 0.5rem;
-  left: 0.5rem;
+  top: 0.625rem;
+  left: 0.625rem;
   font-size: 0.65rem;
   font-weight: 700;
   font-family: var(--font-display);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #fff;
-  background: var(--teal);
-  padding: 0.2rem 0.55rem;
+  letter-spacing: 0.05em;
+  padding: 0.22rem 0.55rem;
   border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.28);
   pointer-events: none;
   z-index: 2;
+  color: #fff;
+}
+
+.product-card-badge.badge-notes {
+  background: #1E40AF;
+}
+
+.product-card-badge.badge-video {
+  background: #0D9488;
+}
+
+.product-card-badge.badge-videoSlides {
+  background: #2563EB;
+}
+
+.product-card-badge.badge-audio {
+  background: #0F172A;
+}
+
+.product-card-badge.badge-fullPack {
+  background: #059669;
 }
 
 .product-card-body {

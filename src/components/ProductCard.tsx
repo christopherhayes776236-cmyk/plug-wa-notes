@@ -98,10 +98,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
                 </div>
               ))}
             </div>
-            <span className="fullpack-collage-badge">Full Pack</span>
+            <span className="product-card-badge badge-fullPack">Complete Pack</span>
           </div>
         ) : (
-          <div className="product-card-thumb">
+          <div className={`product-card-thumb${product.type === 'notes' ? ' is-document' : ''}`}>
             <img
               src={product.thumbnailSrc}
               alt={`${product.name} cover`}
@@ -109,6 +109,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
               height={360}
               loading="lazy"
             />
+            <span className={`product-card-badge badge-${product.type}`}>
+              {product.type === 'notes' ? 'Notes PDF' :
+               product.type === 'video' ? 'Explainer Video' :
+               product.type === 'videoSlides' ? 'Video + Slides' :
+               product.type === 'audio' ? 'Audio Overview' : 'Resource'}
+            </span>
           </div>
         )}
 

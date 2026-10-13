@@ -108,26 +108,6 @@ export async function GET(
       }
     }
 
-    // For sandbox local testing without active keys:
-    if (
-      !process.env.INTASEND_SECRET_KEY &&
-      !process.env.MPESA_CONSUMER_KEY &&
-      order.status === 'pending' &&
-      orderAgeMs > 6000
-    ) {
-      const unit = getUnitByCode(order.unitCode);
-      const product = unit
-        ? findProduct(unit, { productId: order.productId, productType: order.productType })
-        : undefined;
-      const testDownloadUrl = getProductDownloadUrl(order.unitCode, order.productType, product?.fileUrl);
-
-      await updateOrderStatus(orderId, 'paid', testDownloadUrl);
-
-      return NextResponse.json({
-        status: 'paid',
-        fileUrl: testDownloadUrl,
-      });
-    }
 
     return NextResponse.json({
       status: order.status,

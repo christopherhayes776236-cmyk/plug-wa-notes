@@ -34,9 +34,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollTimerRef = useRef<number>(0);
 
-  // Mount + animate in
+  // Mount + animate in + load saved phone
   useEffect(() => {
     setMounted(true);
+    try {
+      const saved = localStorage.getItem('pwn_saved_phone');
+      if (saved) {
+        setPhone(saved);
+      }
+    } catch {}
     const t = setTimeout(() => setVisible(true), 10);
     return () => clearTimeout(t);
   }, []);
@@ -104,6 +110,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validatePhone(phone)) return;
+
+    try {
+      localStorage.setItem('pwn_saved_phone', phone.trim());
+    } catch {}
 
     setIsSubmitting(true);
     setErrorMessage('');
