@@ -65,7 +65,7 @@ export async function initiateIntasendStkPush(params: IntasendStkParams): Promis
   const payload = {
     amount: params.amount,
     phone_number: formattedPhone,
-    api_ref: params.accountReference || 'Plug wa notes',
+    api_ref: params.orderId,
     narrative: 'Plug wa notes',
   };
 
@@ -90,8 +90,8 @@ export async function initiateIntasendStkPush(params: IntasendStkParams): Promis
     throw new Error(errorMsg);
   }
 
-  const invoiceId = data.invoice?.invoice_id || data.id || `IS-${Date.now()}`;
-  const state = data.invoice?.state || 'PENDING';
+  const invoiceId = data.invoice?.invoice_id || data.invoice_id || data.id || `IS-${Date.now()}`;
+  const state = data.invoice?.state || data.state || 'PENDING';
 
   return {
     invoiceId,
@@ -108,6 +108,8 @@ export async function queryIntasendStatus(invoiceId: string): Promise<{
   state: string;
   completed: boolean;
   failed: boolean;
+  failedReason?: string | null;
+  mpesaReference?: string | null;
   raw: any;
 }> {
   const config = getIntasendConfig();
@@ -128,16 +130,109 @@ export async function queryIntasendStatus(invoiceId: string): Promise<{
 
   const data = await response.json().catch(() => ({}));
 
-  const state = data.invoice?.state || data.state || 'UNKNOWN';
+  const invoice = data.invoice || data;
+  const state = invoice?.state || data.state || 'UNKNOWN';
   const stateUpper = String(state).toUpperCase();
 
-  const completed = stateUpper === 'COMPLETE' || stateUpper === 'SUCCESSFUL' || stateUpper === 'SUCCESS';
-  const failed = stateUpper === 'FAILED' || stateUpper === 'CANCELLED' || stateUpper === 'REJECTED';
+  const completed =
+    stateUpper === 'COMPLETE' ||
+    stateUpper === 'COMPLETED' ||
+    stateUpper === 'SUCCESSFUL' ||
+    stateUpper === 'SUCCESS' ||
+    stateUpper === 'PAID';
+
+  const failed =
+    stateUpper === 'FAILED' ||
+    stateUpper === 'CANCELED' ||
+    stateUpper === 'CANCELLED' ||
+    stateUpper === 'REJECTED';
+
+  const failedReason = invoice?.failed_reason || data.detail || null;
+  const mpesaReference = invoice?.mpesa_reference || invoice?.provider_ref || null;
 
   return {
     state: stateUpper,
     completed,
     failed,
+    failedReason,
+    mpesaReference,
     raw: data,
   };
 }
+
+/**
+ * Verifies an M-Pesa confirmation code against IntaSend collections
+ */
+export async function verifyIntasendMpesaCode(mpesaCode: string): Promise<{
+  verified: boolean;
+  invoice?: any;
+  amount?: number;
+  phone?: string;
+  error?: string;
+}> {
+  const config = getIntasendConfig();
+  if (!config.secretKey) {
+    throw new Error('IntaSend Secret Key is not configured');
+  }
+
+  const cleanCode = mpesaCode.trim().toUpperCase();
+  if (!cleanCode || cleanCode.length < 6) {
+    return {
+      verified: false,
+      error: 'Please enter a valid M-Pesa transaction code (e.g. UJDHTA150X)',
+    };
+  }
+
+  const url = `${config.baseUrl}/api/v1/invoices/?provider_ref=${encodeURIComponent(cleanCode)}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${config.secretKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    return {
+      verified: false,
+      error: 'Could not contact payment verification gateway',
+    };
+  }
+
+  const data = await response.json().catch(() => ({}));
+  const results = data.results || [];
+  const invoice =
+    results.find((inv: any) => {
+      const ref = (inv.provider_ref || inv.mpesa_reference || '').toUpperCase();
+      return ref === cleanCode;
+    }) || results[0];
+
+  if (!invoice) {
+    return {
+      verified: false,
+      error: 'M-Pesa code not found yet. If you just paid, please wait 30 seconds for Safaricom to sync and try again.',
+    };
+  }
+
+  const state = String(invoice.state || '').toUpperCase();
+  const isComplete =
+    state === 'COMPLETE' ||
+    state === 'COMPLETED' ||
+    state === 'SUCCESSFUL' ||
+    state === 'SUCCESS' ||
+    state === 'PAID';
+
+  if (!isComplete) {
+    return {
+      verified: false,
+      error: `Transaction was found, but status is currently ${state}.`,
+    };
+  }
+
+  return {
+    verified: true,
+    invoice,
+    amount: Number(invoice.value || invoice.net_amount || 0),
+    phone: invoice.account || '',
+  };
+}
+

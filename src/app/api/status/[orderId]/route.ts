@@ -60,11 +60,12 @@ export async function GET(
           await updateOrderStatus(orderId, 'failed');
           return NextResponse.json({
             status: 'failed',
-            message: 'Payment was cancelled or failed.',
+            message: isStatus.failedReason || 'Payment was cancelled or failed on M-Pesa.',
           });
         } else {
           return NextResponse.json({
             status: 'pending',
+            state: isStatus.state,
           });
         }
       } catch (err) {

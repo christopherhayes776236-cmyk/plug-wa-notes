@@ -31,6 +31,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
 
+  // Active transaction references for re-checks and recovery
+  const [activeOrderId, setActiveOrderId] = useState<string>('');
+  const [activeCheckoutId, setActiveCheckoutId] = useState<string>('');
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+  const [isCheckingAgain, setIsCheckingAgain] = useState(false);
+
+  // M-Pesa receipt code manual unlock
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [mpesaCodeInput, setMpesaCodeInput] = useState('');
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [codeError, setCodeError] = useState('');
+
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollTimerRef = useRef<number>(0);
 
@@ -117,6 +129,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
     setIsSubmitting(true);
     setErrorMessage('');
+    setShowCodeInput(false);
+    setCodeError('');
 
     try {
       const res = await fetch('/api/pay', {
@@ -133,6 +147,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to initiate M-Pesa STK push');
 
+      setActiveOrderId(data.orderId);
+      setActiveCheckoutId(data.checkoutRequestId || '');
       setState('waiting');
       startPolling(data.orderId, data.checkoutRequestId, data.fileUrl);
     } catch (err: unknown) {
@@ -150,14 +166,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const startPolling = (currentOrderId: string, checkoutRequestId?: string, fileUrlFromInit?: string) => {
     stopPolling();
     pollTimerRef.current = 0;
+    setElapsedSeconds(0);
 
     pollIntervalRef.current = setInterval(async () => {
       pollTimerRef.current += 2.5;
+      const currentElapsed = Math.round(pollTimerRef.current);
+      setElapsedSeconds(currentElapsed);
 
-      if (pollTimerRef.current >= 75) {
+      // 120 seconds standard timeout: allows user to enter PIN + network propagation
+      if (pollTimerRef.current >= 120) {
         stopPolling();
         setState('timeout');
-        setErrorMessage('Verification timed out. If money was deducted, save your M-Pesa code.');
+        setErrorMessage('Verification timed out. If money was deducted, enter your M-Pesa code below to unlock immediately.');
         return;
       }
 
@@ -175,7 +195,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         if (data.status === 'paid') {
           stopPolling();
           const url = data.fileUrl || fileUrlFromInit || product.fileUrl || getProductRealDownloadUrl();
-          // Animate modal out, then fire success callback
           setVisible(false);
           setTimeout(() => {
             onPaymentSuccess(url);
@@ -191,6 +210,77 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     }, 2500);
   };
 
+  const handleCheckStatusAgain = async () => {
+    if (!activeOrderId) return;
+    setIsCheckingAgain(true);
+    try {
+      const params = new URLSearchParams();
+      if (activeCheckoutId) params.set('invoiceId', activeCheckoutId);
+      if (unitCode) params.set('unit', unitCode);
+      if (product.id) params.set('product', product.id);
+      if (product.type) params.set('type', product.type);
+
+      const res = await fetch(`/api/status/${activeOrderId}?${params.toString()}`);
+      const data = await res.json();
+
+      if (data.status === 'paid') {
+        const url = data.fileUrl || product.fileUrl || getProductRealDownloadUrl();
+        setVisible(false);
+        setTimeout(() => onPaymentSuccess(url), 260);
+      } else if (data.status === 'failed') {
+        setErrorMessage(data.message || 'Payment failed or was cancelled.');
+        setState('failed');
+      } else {
+        // Resume polling for another 45 seconds
+        setState('waiting');
+        startPolling(activeOrderId, activeCheckoutId, undefined);
+      }
+    } catch {
+      setErrorMessage('Verification check timed out. If you have an M-Pesa SMS code, enter it below.');
+    } finally {
+      setIsCheckingAgain(false);
+    }
+  };
+
+  const handleVerifyMpesaCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCode = mpesaCodeInput.trim().toUpperCase();
+    if (!cleanCode || cleanCode.length < 6) {
+      setCodeError('Please enter a valid M-Pesa receipt code (e.g. UJDHTA150X)');
+      return;
+    }
+
+    setIsVerifyingCode(true);
+    setCodeError('');
+
+    try {
+      const res = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mpesaCode: cleanCode,
+          unitCode,
+          productId: product.id,
+          productType: product.type,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to verify M-Pesa code.');
+      }
+
+      const url = data.fileUrl || product.fileUrl || getProductRealDownloadUrl();
+      setVisible(false);
+      setTimeout(() => onPaymentSuccess(url), 260);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not verify M-Pesa code';
+      setCodeError(msg);
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
+
   const handleFreeWeekendSkip = () => {
     setVisible(false);
     setTimeout(() => {
@@ -199,6 +289,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   const isBlue = product.type === 'notes' || product.type === 'videoSlides';
+
+  // Dynamic progress text while waiting
+  const getWaitingHelpText = () => {
+    if (elapsedSeconds < 20) {
+      return `M-Pesa prompt sent to ${phone || 'your phone'}. Please check your screen.`;
+    }
+    if (elapsedSeconds < 65) {
+      return 'Enter your 4-digit M-Pesa PIN on your phone and press OK.';
+    }
+    return 'Confirming transaction with Safaricom network... Please keep this open.';
+  };
 
   if (!mounted) return null;
 
@@ -268,6 +369,71 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 </button>
               </div>
 
+              {/* Already paid recovery link */}
+              <div style={{ textAlign: 'center', marginTop: '0.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCodeInput(!showCodeInput)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '0.73rem',
+                    color: 'var(--blue)',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    padding: '4px',
+                  }}
+                >
+                  {showCodeInput ? 'Hide M-Pesa Code Input' : 'Already paid? Enter M-Pesa Code to unlock'}
+                </button>
+              </div>
+
+              {showCodeInput && (
+                <div style={{
+                  padding: '0.875rem',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--ink)', fontWeight: 600 }}>
+                    Enter M-Pesa Transaction Code
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input
+                      type="text"
+                      placeholder="e.g. UJDHTA150X"
+                      value={mpesaCodeInput}
+                      onChange={(e) => setMpesaCodeInput(e.target.value.toUpperCase())}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '4px',
+                        fontSize: '0.85rem',
+                        letterSpacing: '1px',
+                        textTransform: 'uppercase',
+                        fontFamily: 'monospace',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={isVerifyingCode}
+                      onClick={handleVerifyMpesaCode}
+                      className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.78rem' }}
+                    >
+                      {isVerifyingCode ? 'Checking...' : 'Unlock'}
+                    </button>
+                  </div>
+                  {codeError && (
+                    <p style={{ fontSize: '0.72rem', color: '#DC2626' }}>{codeError}</p>
+                  )}
+                </div>
+              )}
+
               {freeWeekend && (
                 <button
                   type="button"
@@ -280,20 +446,133 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </form>
           )}
 
-          {/* Waiting for payment */}
+          {/* Waiting for payment with 120s progress */}
           {state === 'waiting' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <StatusBanner status="waiting" phone={phone} />
+              
+              <div style={{
+                padding: '0.625rem 0.875rem',
+                backgroundColor: 'rgba(36, 80, 200, 0.05)',
+                border: '1px dashed rgba(36, 80, 200, 0.25)',
+                borderRadius: '6px',
+                textAlign: 'center',
+              }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--blue)', fontWeight: 500, lineHeight: 1.4 }}>
+                  {getWaitingHelpText()}
+                </p>
+                <div style={{
+                  width: '100%',
+                  height: '4px',
+                  backgroundColor: '#E2E8F0',
+                  borderRadius: '2px',
+                  overflow: 'hidden',
+                  marginTop: '0.5rem',
+                }}>
+                  <div style={{
+                    width: `${Math.min(100, (elapsedSeconds / 120) * 100)}%`,
+                    height: '100%',
+                    backgroundColor: 'var(--blue)',
+                    transition: 'width 2.5s linear',
+                  }} />
+                </div>
+              </div>
+
               <p style={{ fontSize: '0.72rem', color: 'var(--ink-muted)', textAlign: 'center', lineHeight: 1.4 }}>
-                This window will close automatically once your payment is confirmed.
+                This window will automatically unlock your file as soon as Safaricom confirms your PIN.
               </p>
             </div>
           )}
 
-          {/* Failed or timed out */}
-          {(state === 'failed' || state === 'timeout') && (
+          {/* Timed out screen with recovery options */}
+          {state === 'timeout' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <StatusBanner status={state} message={errorMessage} />
+              <StatusBanner status="timeout" message={errorMessage} />
+
+              <div style={{
+                padding: '0.875rem',
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: '6px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+              }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--ink)', fontWeight: 600 }}>
+                  Did money get deducted or did you enter your PIN?
+                </p>
+                <p style={{ fontSize: '0.72rem', color: 'var(--ink-muted)', lineHeight: 1.4 }}>
+                  Safaricom may take a few seconds to finish transmitting. You can check again right now or enter your M-Pesa receipt code.
+                </p>
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                  <input
+                    type="text"
+                    placeholder="M-Pesa Code (e.g. UJDHTA150X)"
+                    value={mpesaCodeInput}
+                    onChange={(e) => setMpesaCodeInput(e.target.value.toUpperCase())}
+                    style={{
+                      flex: 1,
+                      padding: '0.5rem 0.75rem',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '4px',
+                      fontSize: '0.82rem',
+                      letterSpacing: '1px',
+                      textTransform: 'uppercase',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={isVerifyingCode}
+                    onClick={handleVerifyMpesaCode}
+                    className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
+                    style={{ padding: '0.5rem 0.875rem', fontSize: '0.78rem' }}
+                  >
+                    {isVerifyingCode ? 'Checking...' : 'Verify Code'}
+                  </button>
+                </div>
+                {codeError && (
+                  <p style={{ fontSize: '0.72rem', color: '#DC2626' }}>{codeError}</p>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={handleClose}
+                  className="payment-modal-cancel-btn"
+                  style={{ flex: 1 }}
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleCheckStatusAgain}
+                  disabled={isCheckingAgain}
+                  className="payment-modal-cancel-btn"
+                  style={{
+                    flex: 1.5,
+                    border: '1px solid var(--blue)',
+                    color: 'var(--blue)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {isCheckingAgain ? 'Checking...' : 'Check Status Again'}
+                </button>
+                <button
+                  onClick={() => { setState('entering_phone'); setErrorMessage(''); stopPolling(); }}
+                  className={`btn-buy${isBlue ? '' : ' btn-buy-teal'}`}
+                  style={{ flex: 1.5 }}
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Failed state */}
+          {state === 'failed' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <StatusBanner status="failed" message={errorMessage} />
               <div style={{ display: 'flex', gap: '0.625rem' }}>
                 <button
                   onClick={handleClose}
@@ -312,6 +591,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>,
