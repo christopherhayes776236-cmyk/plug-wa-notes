@@ -26,8 +26,8 @@ export function getProductDownloadUrl(unitCode: string, productType: string, cus
   }
 
   const cleanUnit = unitCode.toLowerCase().replace(/\s+/g, '');
-  const extension = productType === 'video' ? 'mp4' : productType === 'videoSlides' ? 'zip' : 'pdf';
-  const resourceType = productType === 'video' ? 'video' : 'raw';
+  const extension = productType === 'video' ? 'mp4' : productType === 'audio' ? 'm4a' : productType === 'videoSlides' ? 'zip' : 'pdf';
+  const resourceType = productType === 'video' || productType === 'audio' ? 'video' : 'raw';
 
   return `https://res.cloudinary.com/${cloudName}/${resourceType}/upload/fl_attachment/v1/units/${cleanUnit}/${productType}.${extension}`;
 }

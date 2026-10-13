@@ -65,7 +65,7 @@ function week13Products(
       id: `${prefix}-full-pack`,
       type: 'fullPack',
       name: 'Complete study pack',
-      description: 'All notes, explainer video, slides, and reference diagrams.',
+      description: 'All notes, explainer video, slides, and audio overview.',
       price: 10,
       thumbnailSrc: `/previews/${prefix}-notes.jpg`,
       collagePreviews: [
@@ -178,7 +178,7 @@ function week45Products(
       id: `${prefix}-w45-full-pack`,
       type: 'fullPack',
       name: 'Weeks 4–5 complete study pack',
-      description: 'All weeks 4–5 notes, explainer video, slides, and reference materials.',
+      description: 'All weeks 4–5 notes, explainer video, slides, and audio overview.',
       price: 10,
       thumbnailSrc: `/previews/${prefix}-w45-notes.jpg`,
       collagePreviews: [
