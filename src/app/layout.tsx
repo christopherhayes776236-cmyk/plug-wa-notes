@@ -93,7 +93,7 @@ export default function RootLayout({
           }
         `}} />
       </head>
-      <body className="min-h-full flex flex-col bg-[#F6F4EF] text-[#23211E]">
+      <body className="min-h-full flex flex-col bg-[#F6F4EF] text-[#23211E]" suppressHydrationWarning>
         {/* Splash screen — pure HTML/CSS, renders before any JS runs */}
         <div id="splash-screen" aria-hidden="true">
           <div id="splash-img-wrap">
