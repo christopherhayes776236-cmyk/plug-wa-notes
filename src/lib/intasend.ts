@@ -9,12 +9,9 @@ export interface IntasendConfig {
   baseUrl: string;
 }
 
-const DEFAULT_INTASEND_PUBLISHABLE_KEY = 'ISPubKey_live_aa619d0a-7045-41bb-ac31-d4bfe7012099';
-const DEFAULT_INTASEND_SECRET_KEY = 'ISSecretKey_live_f6df43b5-9c95-4dca-bb37-91bf0da8a09c';
-
 export function getIntasendConfig(): IntasendConfig {
-  const secretKey = process.env.INTASEND_SECRET_KEY || DEFAULT_INTASEND_SECRET_KEY;
-  const publishableKey = process.env.INTASEND_PUBLISHABLE_KEY || DEFAULT_INTASEND_PUBLISHABLE_KEY;
+  const secretKey = process.env.INTASEND_SECRET_KEY || '';
+  const publishableKey = process.env.INTASEND_PUBLISHABLE_KEY || '';
   const isTest = secretKey.includes('_test_') || process.env.INTASEND_ENV === 'sandbox';
 
   return {

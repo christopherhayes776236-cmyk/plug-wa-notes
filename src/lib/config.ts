@@ -17,11 +17,6 @@ export function isFreeWeekend(): boolean {
   if (process.env.NEXT_PUBLIC_FREE_WEEKEND === 'true') return true;
   if (process.env.NEXT_PUBLIC_FREE_WEEKEND === 'false') return false;
 
-  if (FREE_WEEKEND_ACTIVE) return true;
-
-  // Auto-detect weekend in EAT (UTC+3)
-  const now = new Date();
-  const eatHours = now.getUTCHours() + 3;
-  const eatDay = (now.getUTCDay() + Math.floor(eatHours / 24)) % 7; // 0=Sun, 5=Fri, 6=Sat
-  return eatDay === 5 || eatDay === 6 || eatDay === 0;
+  // Explicit toggle: default to false for secure paid production launch
+  return FREE_WEEKEND_ACTIVE;
 }
