@@ -228,6 +228,120 @@ function week45Section(products: Product[]): WeekSection {
   };
 }
 
+function week67Products(
+  prefix: string,
+  videoDescription: string,
+  notesOverride?: Product[]
+): Product[] {
+  const notes: Product[] = notesOverride ?? [
+    {
+      id: `${prefix}-w67-notes`,
+      type: 'notes',
+      name: 'Weeks 6–7 notes PDF',
+      description: 'Comprehensive assignment guide and exam notes for weeks 6–7.',
+      price: 1,
+      thumbnailSrc: `/previews/${prefix}-w67-notes.jpg`,
+      fileUrl: `/units/${prefix}/notes-w67.pdf`,
+    },
+  ];
+
+  return [
+    ...notes,
+    {
+      id: `${prefix}-w67-audio`,
+      type: 'audio',
+      name: 'Weeks 6–7 audio overview',
+      description: 'Audio highlight breakdown of weeks 6–7 assignment guide.',
+      price: 3,
+      thumbnailSrc: '/media/audio-placeholder.jpg',
+      fileUrl: `/units/${prefix}/audio-w67.m4a`,
+    },
+    {
+      id: `${prefix}-w67-video`,
+      type: 'video',
+      name: 'Weeks 6–7 explainer video',
+      description: videoDescription,
+      price: 5,
+      thumbnailSrc: `/previews/${prefix}-w67-video.jpg`,
+      fileUrl: `/units/${prefix}/video-w67.mp4`,
+    },
+    {
+      id: `${prefix}-w67-video-slides`,
+      type: 'videoSlides',
+      name: 'Weeks 6–7 video + slides pack',
+      description: 'Full weeks 6–7 video walkthrough plus slide decks for quick revision.',
+      price: 7,
+      thumbnailSrc: `/previews/${prefix}-w67-slides.jpg`,
+      fileUrl: `/units/${prefix}/video-w67.mp4`,
+      files: [
+        {
+          name: 'Weeks 6–7 Explainer Video (MP4)',
+          fileUrl: `/units/${prefix}/video-w67.mp4`,
+          fileName: `${prefix}-w67-explainer-video.mp4`,
+          type: 'video',
+        },
+        {
+          name: 'Weeks 6–7 Slide Deck (PDF)',
+          fileUrl: `/units/${prefix}/slides-w67.pdf`,
+          fileName: `${prefix}-w67-slides.pdf`,
+          type: 'slides',
+        },
+      ],
+    },
+    {
+      id: `${prefix}-w67-full-pack`,
+      type: 'fullPack',
+      name: 'Weeks 6–7 complete study pack',
+      description: 'All weeks 6–7 notes, explainer video, slides, and audio overview.',
+      price: 10,
+      thumbnailSrc: `/previews/${prefix}-w67-notes.jpg`,
+      collagePreviews: [
+        `/previews/${prefix}-w67-notes.jpg`,
+        `/previews/${prefix}-w67-video.jpg`,
+        '/media/audio-placeholder.jpg',
+        `/previews/${prefix}-w67-slides.jpg`,
+      ],
+      fileUrl: `/units/${prefix}/notes-w67.pdf`,
+      files: [
+        {
+          name: 'Weeks 6–7 Exam Notes (PDF)',
+          fileUrl: `/units/${prefix}/notes-w67.pdf`,
+          fileName: `${prefix}-w67-notes.pdf`,
+          type: 'notes',
+        },
+        {
+          name: 'Weeks 6–7 Slide Deck (PDF)',
+          fileUrl: `/units/${prefix}/slides-w67.pdf`,
+          fileName: `${prefix}-w67-slides.pdf`,
+          type: 'slides',
+        },
+        {
+          name: 'Weeks 6–7 Audio Breakdown (M4A)',
+          fileUrl: `/units/${prefix}/audio-w67.m4a`,
+          fileName: `${prefix}-w67-audio-breakdown.m4a`,
+          type: 'audio',
+        },
+        {
+          name: 'Weeks 6–7 Explainer Video (MP4)',
+          fileUrl: `/units/${prefix}/video-w67.mp4`,
+          fileName: `${prefix}-w67-explainer-video.mp4`,
+          type: 'video',
+        },
+      ],
+    },
+  ];
+}
+
+function week67Section(products: Product[]): WeekSection {
+  return {
+    id: 'week-6-7',
+    title: 'Weeks 6–7',
+    badge: 'NEW',
+    subtitle: 'Latest batch — weeks 6–7 assignment guide, UML modeling breakdown, notes, slides, and walkthrough.',
+    products,
+  };
+}
+
 function soen220AssignmentSection(): WeekSection {
   return {
     id: 'soen220-assignment',
@@ -306,6 +420,9 @@ export const UNITS: Unit[] = [
     description: 'System modeling, UML diagrams, use case analysis, design patterns, and architectural abstractions.',
     lecturer: 'Catherine Wangari',
     sections: [
+      week67Section(
+        week67Products('soen201', 'Campus Hostel Booking System UML assignment guide, diagrams, and video walkthrough.')
+      ),
       week45Section(
         week45Products('soen201', 'UML design patterns, state diagrams, and architectural principles.')
       ),
