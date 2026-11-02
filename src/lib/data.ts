@@ -12,7 +12,7 @@ function week13Products(
       type: 'notes',
       name: 'Clean notes PDF',
       description: 'Typed, exam-focused notes for weeks 1–3.',
-      price: 1,
+      price: 0,
       thumbnailSrc: `/previews/${prefix}-notes.jpg`,
       fileUrl: `/units/${prefix}/notes.pdf`,
     },
@@ -125,7 +125,7 @@ function week45Products(
       type: 'notes',
       name: 'Weeks 4–5 notes PDF',
       description: 'Comprehensive, exam-focused lecture notes for weeks 4–5.',
-      price: 1,
+      price: 0,
       thumbnailSrc: `/previews/${prefix}-w45-notes.jpg`,
       fileUrl: `/units/${prefix}/notes-w45.pdf`,
     },
@@ -239,7 +239,7 @@ function week67Products(
       type: 'notes',
       name: 'Weeks 6–7 notes PDF',
       description: 'Comprehensive assignment guide and exam notes for weeks 6–7.',
-      price: 1,
+      price: 0,
       thumbnailSrc: `/previews/${prefix}-w67-notes.jpg`,
       fileUrl: `/units/${prefix}/notes-w67.pdf`,
     },
@@ -354,7 +354,7 @@ function soen220AssignmentSection(): WeekSection {
         type: 'notes',
         name: 'Assignment Solution Notes (PDF)',
         description: 'Complete step-by-step written guide and solutions for the weeks 4–5 assignment.',
-        price: 1,
+        price: 0,
         thumbnailSrc: '/previews/soen220-asg-notes.jpg',
         fileUrl: '/units/soen220/assignment-notes.pdf',
       },
@@ -399,6 +399,19 @@ function soen220AssignmentSection(): WeekSection {
 }
 
 
+const WESONGA_STRIKE_VIDEO_URL =
+  'https://res.cloudinary.com/nd4ofxfu/video/upload/f_auto,q_auto/v1793621817/units/common/wesonga-strike.mp4';
+
+function week69StrikeSection(): WeekSection {
+  return {
+    id: 'week-6-9',
+    title: 'Weeks 6–9',
+    subtitle: 'Wesonga Aliamua',
+    products: [],
+    videoOnlyUrl: WESONGA_STRIKE_VIDEO_URL,
+  };
+}
+
 export const UNITS: Unit[] = [
   {
     code: 'COMP 102',
@@ -406,6 +419,7 @@ export const UNITS: Unit[] = [
     description: 'Sets, relations, functions, propositional logic, and combinatorics designed for computing systems.',
     lecturer: 'Silas Momanyi',
     sections: [
+      week69StrikeSection(),
       week45Section(
         week45Products('comp102', 'Comprehensive problem-solving breakdown for sets, relations & functions.')
       ),
@@ -420,6 +434,7 @@ export const UNITS: Unit[] = [
     description: 'System modeling, UML diagrams, use case analysis, design patterns, and architectural abstractions.',
     lecturer: 'Catherine Wangari',
     sections: [
+      week69StrikeSection(),
       week67Section(
         week67Products('soen201', 'Campus Hostel Booking System UML assignment guide, diagrams, and video walkthrough.')
       ),
@@ -437,6 +452,7 @@ export const UNITS: Unit[] = [
     description: 'Modern web architecture, HTML5 semantics, responsive CSS, client-side JavaScript, and HTTP fundamentals.',
     lecturer: 'Silas Momanyi',
     sections: [
+      week69StrikeSection(),
       week45Section(
         week45Products('soen202', 'Deep dive into responsive layout mechanics, DOM manipulation, and HTTP.')
       ),
@@ -451,6 +467,7 @@ export const UNITS: Unit[] = [
     description: 'Relational data models, normalization (1NF-BCNF), SQL querying, indexing, and transaction management.',
     lecturer: 'Verah Nyagoto',
     sections: [
+      week69StrikeSection(),
       week45Section(
         week45Products('soen203', 'Advanced relational algebra, SQL optimization, and database normalization.')
       ),
@@ -465,6 +482,7 @@ export const UNITS: Unit[] = [
     description: 'OSI and TCP/IP stack layers, transmission media, subnetting, routing protocols, and socket communication.',
     lecturer: 'Rebecca Arikas',
     sections: [
+      week69StrikeSection(),
       week45Section(
         week45Products('soen220', 'Transmission media, packet routing mechanics, and subnet calculations.')
       ),
@@ -476,18 +494,9 @@ export const UNITS: Unit[] = [
             type: 'notes',
             name: 'Weeks 1–2 notes',
             description: 'Typed notes covering data communication fundamentals for weeks 1–2.',
-            price: 1,
+            price: 0,
             thumbnailSrc: '/previews/soen220-notes-w12.jpg',
             fileUrl: '/units/soen220/notes-w12.pdf',
-          },
-          {
-            id: 'soen220-notes-w3',
-            type: 'notes',
-            name: 'Week 3 notes',
-            description: 'Network topology notes for week 3.',
-            price: 1,
-            thumbnailSrc: '/previews/soen220-notes-w3.jpg',
-            fileUrl: '/units/soen220/notes-w3.pdf',
           },
         ])
       ),
@@ -499,6 +508,7 @@ export const UNITS: Unit[] = [
     description: 'Encapsulation, inheritance, polymorphism, abstract classes, interfaces, and core Java exception handling.',
     lecturer: 'Dr. Joshua Okemwa',
     sections: [
+      week69StrikeSection(),
       week45Section(
         week45Products('soen240', 'Java inheritance hierarchies, polymorphism patterns, and exception architecture.')
       ),

@@ -13,6 +13,27 @@ export const PriceTag: React.FC<PriceTagProps> = ({ amount, variant = 'blue', fr
     neutral: { color: 'var(--ink)', background: 'var(--paper)', border: '1px solid var(--line)' },
   };
 
+  if (amount === 0) {
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        fontFamily: 'var(--font-display)',
+        fontWeight: 700,
+        fontSize: '0.85rem',
+        padding: '0.2rem 0.65rem',
+        whiteSpace: 'nowrap',
+        background: 'rgba(34, 197, 94, 0.15)',
+        border: '1px solid rgba(34, 197, 94, 0.4)',
+        borderRadius: '9999px',
+        color: '#15803d',
+        letterSpacing: '0.04em',
+      }}>
+        FREE
+      </span>
+    );
+  }
+
   if (freeMode) {
     return (
       <span style={{

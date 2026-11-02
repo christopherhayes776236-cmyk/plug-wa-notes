@@ -64,6 +64,18 @@ export async function POST(req: NextRequest) {
 
     const orderId = `PWN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
+    // Free items unlock immediately without STK push
+    if (product.price <= 0) {
+      const downloadUrl = product.fileUrl || `/notes/${product.id}.pdf`;
+      return NextResponse.json({
+        success: true,
+        orderId,
+        checkoutRequestId: 'FREE-RESOURCE',
+        fileUrl: downloadUrl,
+        message: 'This resource is completely free! Your download is ready.',
+      });
+    }
+
     let checkoutRequestId = '';
     let customerMessage = 'Please enter your M-Pesa PIN on your phone.';
 

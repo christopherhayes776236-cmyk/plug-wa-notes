@@ -134,7 +134,12 @@ export const UnitBatchView: React.FC<UnitBatchViewProps> = ({ unit }) => {
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        backgroundColor: section.badge === 'ASSIGNMENT' ? '#7C3AED' : '#10B981',
+                        backgroundColor:
+                          section.badge === 'STRIKE'
+                            ? '#EA580C'
+                            : section.badge === 'ASSIGNMENT'
+                            ? '#7C3AED'
+                            : '#10B981',
                         color: '#FFFFFF',
                         fontSize: '0.6875rem',
                         fontWeight: 700,
@@ -159,7 +164,7 @@ export const UnitBatchView: React.FC<UnitBatchViewProps> = ({ unit }) => {
                     lineHeight: 1.4,
                   }}
                 >
-                  {section.subtitle || `${productCount} study materials (Notes, Video, Audio, Packs)`}
+                  {section.subtitle || (section.videoOnlyUrl ? 'Wesonga Aliamua' : `${productCount} study materials (Notes, Video, Audio, Packs)`)}
                 </p>
               </div>
 
@@ -197,18 +202,48 @@ export const UnitBatchView: React.FC<UnitBatchViewProps> = ({ unit }) => {
             {isOpen && (
               <div
                 style={{
-                  padding: '0 1.25rem 1.25rem 1.25rem',
+                  padding: section.videoOnlyUrl ? '1.25rem' : '0 1.25rem 1.25rem 1.25rem',
                   borderTop: '1px solid rgba(15, 23, 42, 0.06)',
                   backgroundColor: '#FAFAF9',
                 }}
               >
-                <div style={{ marginTop: '1.25rem' }}>
-                  <div className="products-stack">
-                    {section.products?.map((product) => (
-                      <ProductCard key={product.id} product={product} unitCode={unit.code} />
-                    ))}
+                {section.videoOnlyUrl ? (
+                  <div
+                    style={{
+                      width: '100%',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      backgroundColor: '#0F172A',
+                      boxShadow: '0 4px 16px rgba(15, 23, 42, 0.12)',
+                    }}
+                  >
+                    <video
+                      controls
+                      playsInline
+                      controlsList="nodownload"
+                      preload="metadata"
+                      style={{
+                        width: '100%',
+                        height: 'auto',
+                        display: 'block',
+                        maxHeight: '440px',
+                        backgroundColor: '#000000',
+                      }}
+                    >
+                      <source src={section.videoOnlyUrl} type="video/mp4" />
+                      <source src="/media/wesonga-strike.mp4" type="video/mp4" />
+                      Your browser does not support HTML5 video streaming.
+                    </video>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ marginTop: '1.25rem' }}>
+                    <div className="products-stack">
+                      {section.products?.map((product) => (
+                        <ProductCard key={product.id} product={product} unitCode={unit.code} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

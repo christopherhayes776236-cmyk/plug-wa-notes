@@ -129,7 +129,28 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, unitCode }) =
 
           <div className="product-card-action">
             {state === 'idle' && (
-              freeWeekend ? (
+              product.price === 0 || product.type === 'notes' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: '#15803d',
+                    background: 'rgba(34, 197, 94, 0.12)',
+                    border: '1px solid rgba(34, 197, 94, 0.25)',
+                    padding: '0.2rem 0.5rem',
+                    borderRadius: '4px',
+                    width: 'fit-content',
+                  }}>
+                    <span>Free Download</span>
+                  </div>
+                  {renderDownloadButtons()}
+                </div>
+              ) : freeWeekend ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
                   <div style={{
                     display: 'inline-flex',

@@ -26,6 +26,9 @@ export interface WeekSection {
   subtitle?: string;
   badge?: string;
   products: Product[];
+  videoOnlyUrl?: string;
+  videoTitle?: string;
+  videoDescription?: string;
 }
 
 export interface Unit {
